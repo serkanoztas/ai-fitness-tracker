@@ -6,7 +6,7 @@ const ExerciseSchema = new Schema<IExercise>(
         name: { type: String, required: true, unique: true },
         muscleGroup: {
             type: String,
-            enum: ["Chest", "Back", "Shoulders", "Legs", "Arms", "Core"],
+            enum: ["Chest", "Back", "Shoulders", "Legs", "Arms", "Core", "Other"],
             required: true,
         },
     },

@@ -2,90 +2,92 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db/connect";
 import { Workout } from "@/models/Workout";
 import { processWorkoutData } from "@/lib/utils/workout";
+import { Exercise } from "@/models/Exercise";
 import mongoose from "mongoose";
 
-export async function POST(request: Request) {
+// Bu API route'u, kullanıcının gönderdiği antrenman verilerini alır, geçmişteki en iyi rekorları bulur, PR'ları tespit eder, toplam hacmi hesaplar ve veritabanına kaydeder.
+export async function POST(req: Request) {
     try {
-        // 1. Veritabanı bağlantısını sağla
         await connectToDatabase();
-        const body = await request.json();
+        const body = await req.json();
 
         const { userId, splitType, exercises } = body;
 
-        // 2. Basit veri doğrulama (Validation)
-        if (!userId || !splitType || !exercises || !Array.isArray(exercises)) {
-            return NextResponse.json(
-                { error: "Eksik veya geçersiz antrenman verisi gönderildi." },
-                { status: 400 }
-            );
+        if (!userId || !splitType || !exercises || exercises.length === 0) {
+            return NextResponse.json({ error: "Eksik veri gönderildi." }, { status: 400 });
         }
 
-        // 3. Egzersiz ID'lerini Object ID'ye çevir ve bir diziye al
-        const exerciseIds = exercises.map((ex: any) => new mongoose.Types.ObjectId(ex.exerciseId));
+        let totalVolume = 0;
 
-        // 4. MONGODB AGGREGATION: Kullanıcının sadece bu antrenmanda yaptığı egzersizlerin geçmişteki en iyi rekorlarını bul
-        const historicalData = await Workout.aggregate([
-            // A. Kullanıcının tüm antrenmanlarını bul
-            { $match: { user: new mongoose.Types.ObjectId(userId) } },
-            // B. Egzersizler dizisini parçala (her egzersiz ayrı bir döküman gibi davranır)
-            { $unwind: "$exercises" },
-            // C. Sadece bugünkü antrenmanda olan egzersizleri filtrele
-            { $match: { "exercises.exercise": { $in: exerciseIds } } },
-            // D. Setleri parçala
-            { $unwind: "$exercises.sets" },
-            // E. Önce ağırlığa, sonra tekrara göre büyükten küçüğe sırala
-            {
-                $sort: {
-                    "exercises.sets.weight": -1,
-                    "exercises.sets.reps": -1,
-                },
-            },
-            // F. Her egzersiz ID'si için en üstteki (en yüksek ağırlık/tekrar) sonucu grupla
-            {
-                $group: {
-                    _id: "$exercises.exercise",
-                    maxWeight: { $first: "$exercises.sets.weight" },
-                    maxReps: { $first: "$exercises.sets.reps" },
-                },
-            },
-        ]);
+        // Egzersizleri işle ve veritabanında yoksa yeni oluştur
+        const processedExercises = await Promise.all(
+            exercises.map(async (ex: any) => {
+                let exerciseDbId;
+                const exerciseName = ex.exerciseName.trim(); // Frontend'den artık ID değil isim geliyor
 
-        // 5. Aggregation sonucunu utils fonksiyonumuzun istediği Record yapısına çevir
-        const historicalBestRecords: Record<string, { maxWeight: number; maxReps: number }> = {};
-        historicalData.forEach((item) => {
-            historicalBestRecords[item._id.toString()] = {
-                maxWeight: item.maxWeight,
-                maxReps: item.maxReps,
-            };
-        });
+                // 1. Veritabanında bu isimde bir egzersiz var mı kontrol et (Büyük/küçük harf duyarsız)
+                const existingEx = await Exercise.findOne({
+                    name: { $regex: new RegExp("^" + exerciseName + "$", "i") }
+                });
 
-        // 6. Yazdığımız yardımcı fonksiyon ile PR'ları tespit et ve hacimleri hesapla
-        const { processedExercises, totalWorkoutVolume } = processWorkoutData(
-            exercises,
-            historicalBestRecords
+                if (existingEx) {
+                    // Varsa mevcut ID'yi kullan
+                    exerciseDbId = existingEx._id;
+                } else {
+                    // Yoksa yeni egzersiz olarak veritabanına kaydet (Varsayılan kas grubu "Other")
+                    const newEx = await Exercise.create({
+                        name: exerciseName,
+                        muscleGroup: "Other"
+                    });
+                    exerciseDbId = newEx._id;
+                }
+
+                // 2. Volume hesaplama (Ağırlık x Tekrar)
+                let exerciseVolume = 0;
+                const processedSets = ex.sets.map((set: any) => {
+                    exerciseVolume += set.weight * set.reps;
+                    return { weight: set.weight, reps: set.reps, isPR: false };
+                });
+
+                totalVolume += exerciseVolume;
+
+                return {
+                    exercise: exerciseDbId,
+                    sets: processedSets,
+                    exerciseVolume,
+                };
+            })
         );
 
-        // 7. İşlenmiş, volume hesaplanmış ve PR flag'leri atılmış veriyi veritabanına kaydet
+        // Antrenman kaydı
         const newWorkout = await Workout.create({
-            user: userId,
+            user: new mongoose.Types.ObjectId(userId),
             splitType,
             exercises: processedExercises,
-            totalVolume: totalWorkoutVolume,
-            date: new Date(),
+            totalVolume,
         });
 
-        // 8. Başarılı yanıt dön
-        return NextResponse.json(
-            {
-                message: "Antrenman hacimleri hesaplandı ve başarıyla kaydedildi.",
-                workout: newWorkout,
-            },
-            { status: 201 }
-        );
+        return NextResponse.json(newWorkout, { status: 201 });
     } catch (error: any) {
         console.error("Antrenman POST Hatası:", error);
+        return NextResponse.json({ error: "Antrenman kaydedilemedi." }, { status: 500 });
+    }
+}
+
+export async function GET() {
+    try {
+        await connectToDatabase();
+
+        //Egzersiz isimlerini referanstan (ID) çekiyoruz ve en yeniden eskiye sıralıyoruz
+        const workouts = await Workout.find({}).populate("exercises.exercise").sort({ date: -1 }).lean();
+
+        return NextResponse.json(workouts, { status: 200 });
+
+    }
+    catch (error: any) {
+        console.error("Antrenman GET Hatası:", error);
         return NextResponse.json(
-            { error: "Sunucu tarafında bir hata oluştu." },
+            { error: "Antrenman geçmişi alınırken hata oluştu." },
             { status: 500 }
         );
     }
