@@ -30,6 +30,13 @@ export interface IUser extends Document {
     email: string;
     password?: string;
     weightLogs: IWeightLog[];
+    nutritionLogs: {
+        calories: number;
+        protein: number;
+        carbs: number;
+        fat: number;
+        date: Date;
+    }[];
     createdAt: Date;
     updatedAt: Date;
 }

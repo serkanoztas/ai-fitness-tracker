@@ -20,6 +20,16 @@ const UserSchema = new mongoose.Schema<IUser>(
                 date: { type: Date, default: Date.now },
             },
         ],
+
+        nutritionLogs: [
+            {
+                calories: { type: Number, required: true },
+                protein: { type: Number, default: 0 },
+                carbs: { type: Number, default: 0 },
+                fat: { type: Number, default: 0 },
+                date: { type: Date, default: Date.now },
+            },
+        ],
     },
     { timestamps: true }
 );

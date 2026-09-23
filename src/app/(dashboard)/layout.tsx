@@ -2,12 +2,13 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Dumbbell, History, Scale, LogOut } from "lucide-react";
+import { LayoutDashboard, Dumbbell, History, Scale, LogOut, Utensils } from "lucide-react";
 
 const NAV_ITEMS = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Antrenman", href: "/workout/new", icon: Dumbbell },
     { name: "Geçmiş", href: "/workout/history", icon: History },
+    { name: "Beslenme", href: "/nutrition", icon: Utensils },
     { name: "Kilo Takibi", href: "/weight", icon: Scale },
 ];
 
