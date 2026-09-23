@@ -1,8 +1,8 @@
 "use client";
-
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Dumbbell, History, Scale } from "lucide-react";
+import { LayoutDashboard, Dumbbell, History, Scale, LogOut } from "lucide-react";
 
 const NAV_ITEMS = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -17,6 +17,9 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const pathname = usePathname();
+    const { data: session } = useSession();
+    const userName = session?.user?.name || "Şampiyon"; //kullanıcı adı yoksa şampiyon yazar default olarak
+    const userInitial = userName.charAt(0).toUpperCase();
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -52,15 +55,27 @@ export default function DashboardLayout({
                 </nav>
 
                 {/* Kullanıcı Profili Özeti (Alt kısım) */}
+                {/* Kullanıcı Profili Özeti ve Çıkış Yap (Alt kısım) */}
                 <div className="p-4 m-4 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold border border-blue-200 dark:border-blue-800">
-                            Ş
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold border border-blue-200 dark:border-blue-800">
+                                {userInitial}
+                            </div>
+                            <div className="text-sm overflow-hidden">
+                                <p className="font-bold truncate text-gray-900 dark:text-white">{userName}</p>
+                                <p className="text-xs text-gray-500 truncate">Gelişim devam ediyor</p>
+                            </div>
                         </div>
-                        <div className="text-sm overflow-hidden">
-                            <p className="font-bold truncate">Şampiyon</p>
-                            <p className="text-xs text-gray-500 truncate">Gelişim devam ediyor</p>
-                        </div>
+
+                        {/* Çıkış Yap Butonu */}
+                        <button
+                            onClick={() => signOut({ callbackUrl: '/login' })}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                            title="Çıkış Yap"
+                        >
+                            <LogOut className="w-5 h-5" />
+                        </button>
                     </div>
                 </div>
             </aside>

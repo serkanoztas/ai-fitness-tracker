@@ -2,13 +2,20 @@ import { User } from "@/models/User";
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/db/connect";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 
-const DUMMY_USER_ID = "64a2b9f3e4b0c1a2d3e4f5f6";
 
 export async function GET() {
     try {
+
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
+        }
+
         await connectToDatabase();
-        const user = await User.findById(DUMMY_USER_ID).lean();
+        const user = await User.findById(session.user.id).lean();
 
         if (!user || !user.weightLogs) {
             return NextResponse.json([], { status: 200 });
@@ -24,6 +31,12 @@ export async function GET() {
 
 export async function POST(req: Request) {
     try {
+
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
+        }
+
         await connectToDatabase();
         const body = await req.json();
 
@@ -36,12 +49,9 @@ export async function POST(req: Request) {
 
         // Kullanıcı varsa güncelle, yoksa upsert ile oluştur
         const updatedUser = await User.findOneAndUpdate(
-            { _id: new mongoose.Types.ObjectId(DUMMY_USER_ID) },
-            {
-                $push: { weightLogs: { weight: parsedWeight, date: new Date() } },
-                $setOnInsert: { name: "Şampiyon", email: "test@test.com" } // Hiç kayıt yoksa failsafe
-            },
-            { new: true, upsert: true }
+            { _id: new mongoose.Types.ObjectId(session.user.id) },
+            { $push: { weightLogs: { weight: parsedWeight, date: new Date() } } },
+            { new: true } // Sadece güncelleme yapıyoruz, upsert'e gerek kalmadı çünkü kullanıcı zaten auth olmuş
         );
 
         return NextResponse.json(updatedUser.weightLogs, { status: 201 });

@@ -28,6 +28,7 @@ export interface IExercise extends Document {
 export interface IUser extends Document {
     name: string;
     email: string;
+    password?: string;
     weightLogs: IWeightLog[];
     createdAt: Date;
     updatedAt: Date;

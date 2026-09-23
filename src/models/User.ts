@@ -6,14 +6,20 @@ const WeightLogSchema = new Schema(
         date: { type: Date, required: true },
         weight: { type: Number, required: true }
     },
-    { _id: false } // Alt belge için _id alanını devre dışı bırak
+    { _id: false }
 );
 
-const UserSchema = new Schema<IUser>(
+const UserSchema = new mongoose.Schema<IUser>(
     {
         name: { type: String, required: true },
         email: { type: String, required: true, unique: true },
-        weightLogs: { type: [WeightLogSchema] },
+        password: { type: String, required: true },
+        weightLogs: [
+            {
+                weight: { type: Number, required: true },
+                date: { type: Date, default: Date.now },
+            },
+        ],
     },
     { timestamps: true }
 );

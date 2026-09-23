@@ -4,17 +4,21 @@ import { Workout } from "@/models/Workout";
 import { User } from "@/models/User";
 import { Exercise } from "@/models/Exercise"; // Populate işlemi için gerekli
 import mongoose from "mongoose";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 
 export async function GET() {
     try {
+
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
+        }
+
         await connectToDatabase();
 
-        // Şimdilik test için sabit bir kullanıcı ID'si (Auth eklenince dinamik olacak)
-        // Eğer veritabanında henüz bir User yoksa, hata vermemesi için genel bir query yapalım
-        // NOT: Gerçek senaryoda bu ID'yi session'dan alacağız. 
-        // Test amaçlı veritabanındaki İLK kullanıcıyı bulalım (yoksa dummy id kullanalım)
+        const userId = session.user.id;
         const firstUser = await User.findOne();
-        const userId = firstUser ? firstUser._id : new mongoose.Types.ObjectId("64a2b9f3e4b0c1a2d3e4f5f6");
 
         // Zaman dilimleri
         const now = new Date();
@@ -23,7 +27,6 @@ export async function GET() {
 
         // 1. Son 4 haftanın tüm antrenmanlarını getir ve egzersiz detaylarını (kas grubu vb.) eşleştir
         const workouts = await Workout.find({
-            // user: userId, // Test aşamasında eğer user kaydı yoksa diye bu satırı yoruma alıyorum, herkesin antrenmanını çekecek
             date: { $gte: fourWeeksAgo },
         })
             .populate("exercises.exercise")

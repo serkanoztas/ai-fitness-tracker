@@ -4,16 +4,26 @@ import { Workout } from "@/models/Workout";
 import { processWorkoutData } from "@/lib/utils/workout";
 import { Exercise } from "@/models/Exercise";
 import mongoose from "mongoose";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
+
 
 // Bu API route'u, kullanıcının gönderdiği antrenman verilerini alır, geçmişteki en iyi rekorları bulur, PR'ları tespit eder, toplam hacmi hesaplar ve veritabanına kaydeder.
 export async function POST(req: Request) {
     try {
+
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
+        }
+        const userId = session.user.id; // Güvenlik için Frontend'den gelen ID'ye değil, Session'a güveniyoruz.
+
         await connectToDatabase();
         const body = await req.json();
+        const { splitType, exercises } = body;
 
-        const { userId, splitType, exercises } = body;
 
-        if (!userId || !splitType || !exercises || exercises.length === 0) {
+        if (!splitType || !exercises || exercises.length === 0) {
             return NextResponse.json({ error: "Eksik veri gönderildi." }, { status: 400 });
         }
 
@@ -76,10 +86,19 @@ export async function POST(req: Request) {
 
 export async function GET() {
     try {
+
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
+        }
+
         await connectToDatabase();
 
         //Egzersiz isimlerini referanstan (ID) çekiyoruz ve en yeniden eskiye sıralıyoruz
-        const workouts = await Workout.find({}).populate("exercises.exercise").sort({ date: -1 }).lean();
+        const workouts = await Workout.find({ user: new mongoose.Types.ObjectId(session.user.id) })
+            .populate("exercises.exercise")
+            .sort({ date: -1 })
+            .lean();
 
         return NextResponse.json(workouts, { status: 200 });
 
