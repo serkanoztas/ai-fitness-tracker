@@ -54,7 +54,7 @@ export async function POST(req: Request) {
             { new: true } // Sadece güncelleme yapıyoruz, upsert'e gerek kalmadı çünkü kullanıcı zaten auth olmuş
         );
 
-        return NextResponse.json(updatedUser.weightLogs, { status: 201 });
+        return NextResponse.json(updatedUser?.weightLogs || [], { status: 201 });
     }
     catch (error) {
         console.error("Kilo POST Hatası:", error);

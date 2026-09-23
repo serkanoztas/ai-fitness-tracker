@@ -1,6 +1,6 @@
 import { Document, Types } from "mongoose";
 
-export type MuscleGroup = "Chest" | "Back" | "Shoulders" | "Legs" | "Arms" | "Core";
+export type MuscleGroup = "Chest" | "Back" | "Shoulders" | "Legs" | "Arms" | "Core" | "Other";
 export type WorkoutSplit = "Upper" | "Lower" | "Push" | "Pull" | "Legs" | "FullBody" | "Other";
 
 // Kullanıcı Kilo Logu

@@ -24,6 +24,11 @@ export const authOptions: NextAuthOptions = {
                     throw new Error("Bu email ile kayıtlı kullanıcı bulunamadı.");
                 }
 
+                // Şifre boşsa direkt işlemi reddet
+                if (!user.password) {
+                    throw new Error("Şifre bulunamadı.");
+                }
+
                 const isValid = await bcrypt.compare(credentials.password, user.password);
                 if (!isValid) {
                     throw new Error("Hatalı şifre.");

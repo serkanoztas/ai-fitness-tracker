@@ -17,9 +17,13 @@ export default function NewWorkoutPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Dinamik Egzersiz ve Set State'i
-    const [exercises, setExercises] = useState([
+    const [exercises, setExercises] = useState<{
+        exerciseName: string;
+        exerciseId?: string; // ? işareti bunun opsiyonel olduğunu belirtir
+        sets: { weight: string; reps: string; }[];
+    }[]>([
         {
-            exerciseName: "", // BURASI DEĞİŞTİ
+            exerciseName: "",
             sets: [{ weight: "", reps: "" }],
         },
     ]);
@@ -45,7 +49,7 @@ export default function NewWorkoutPage() {
 
     // --- HANDLER FONKSİYONLARI ---
     const addExercise = () => {
-        setExercises([...exercises, { exerciseId: "", sets: [{ weight: "", reps: "" }] }]);
+        setExercises([...exercises, { exerciseName: "", exerciseId: "", sets: [{ weight: "", reps: "" }] }]);
     };
 
     const removeExercise = (index: number) => {
