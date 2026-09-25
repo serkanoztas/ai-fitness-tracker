@@ -155,12 +155,50 @@ export default function HistoryPage() {
                                     </div>
                                 </div>
 
-                                {/* Alt Kısım: Yapılan Egzersizlerin İsimleri (Özet olarak) */}
-                                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                                        <span className="font-semibold text-gray-700 dark:text-gray-300">Hareketler: </span>
-                                        {workout.exercises.map((ex: any) => ex.exercise?.name || "Bilinmeyen").join(", ")}
-                                    </p>
+                                {/* Alt Kısım: Detaylı Egzersiz ve Set Görünümü */}
+                                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                        Egzersiz Detayları
+                                    </h4>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {workout.exercises.map((ex: any, exIndex: number) => (
+                                            <div key={exIndex} className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+
+                                                {/* Egzersiz Başlığı ve Hacmi */}
+                                                <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-200 dark:border-gray-700/50">
+                                                    <span className="font-bold text-gray-900 dark:text-white text-sm">
+                                                        {ex.exercise?.name || "Bilinmeyen Egzersiz"}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500 font-medium">
+                                                        {ex.exerciseVolume} kg
+                                                    </span>
+                                                </div>
+
+                                                {/* Setler */}
+                                                <div className="space-y-1.5">
+                                                    {ex.sets.map((set: any, setIndex: number) => (
+                                                        <div
+                                                            key={setIndex}
+                                                            className={`flex justify-between items-center text-xs p-1.5 rounded-md px-2 ${set.isPR
+                                                                    ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-400 font-bold"
+                                                                    : "text-gray-600 dark:text-gray-400"
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="opacity-70">Set {setIndex + 1}</span>
+                                                                {set.isPR && <Trophy className="w-3 h-3 text-yellow-600 dark:text-yellow-500" />}
+                                                            </div>
+                                                            <span className={set.isPR ? "font-black" : "font-semibold text-gray-900 dark:text-white"}>
+                                                                {set.weight} kg <span className="text-gray-400 font-normal mx-0.5">x</span> {set.reps}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         );

@@ -100,6 +100,13 @@ export default function DashboardLayout({
                             </Link>
                         );
                     })}
+                    <button
+                        onClick={() => signOut({ callbackUrl: '/login' })}
+                        className="flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-colors text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30"
+                    >
+                        <LogOut className="w-5 h-5 mb-1 stroke-2" />
+                        <span className="text-[10px] font-semibold">Çıkış</span>
+                    </button>
                 </div>
             </nav>
 
