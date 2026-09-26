@@ -64,3 +64,38 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Kaydedilemedi" }, { status: 500 });
     }
 }
+
+// DELETE: belirli bir beslenme kaydını sil
+export async function DELETE(req: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
+        }
+
+        await connectToDatabase();
+        const url = new URL(req.url);
+        const LogId = url.searchParams.get("id");
+
+        if (!LogId) {
+            return NextResponse.json({ error: "Geçersiz kalori ID" }, { status: 400 });
+        }
+
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: new mongoose.Types.ObjectId(session.user.id) },
+            { $pull: { nutritionLogs: { _id: new mongoose.Types.ObjectId(LogId) } } },
+            { new: true }
+        )
+
+        if (!updatedUser) {
+            return NextResponse.json({ error: "Kullanıcı bulunamadı" }, { status: 404 });
+        }
+
+        return NextResponse.json(updatedUser.nutritionLogs, { status: 200 });
+
+    }
+    catch (error) {
+        console.error("Beslenme DELETE Hatası:", error);
+        return NextResponse.json({ error: "Silinemedi" }, { status: 500 });
+    }
+}

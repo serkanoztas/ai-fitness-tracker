@@ -33,7 +33,7 @@ export async function POST(req: Request) {
         const processedExercises = await Promise.all(
             exercises.map(async (ex: any) => {
                 let exerciseDbId;
-                const exerciseName = ex.exerciseName.trim(); // Frontend'den artık ID değil isim geliyor
+                const exerciseName = ex.exerciseName.trim();
 
                 // 1. Veritabanında bu isimde bir egzersiz var mı kontrol et (Büyük/küçük harf duyarsız)
                 const existingEx = await Exercise.findOne({
@@ -107,6 +107,43 @@ export async function GET() {
         console.error("Antrenman GET Hatası:", error);
         return NextResponse.json(
             { error: "Antrenman geçmişi alınırken hata oluştu." },
+            { status: 500 }
+        );
+    }
+}
+
+export async function DELETE(req: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
+        }
+
+        await connectToDatabase();
+
+        const url = new URL(req.url);
+        const workoutId = url.searchParams.get("id");
+
+        if (!workoutId) {
+            return NextResponse.json({ error: "Geçersiz antrenman id" }, { status: 401 });
+        }
+
+        const deletedWorkout = await Workout.findOneAndDelete({
+            _id: workoutId,
+            user: new mongoose.Types.ObjectId(session.user.id),
+        })
+
+        if (!deletedWorkout) {
+            return NextResponse.json({ error: "Antrenman bulunamadı" }, { status: 401 });
+        }
+
+        return NextResponse.json({ message: "Antrenman başarıyla silindi" }, { status: 200 });
+
+    }
+    catch (error: any) {
+        console.error("Antrenman DELETE Hatası:", error);
+        return NextResponse.json(
+            { error: "Antrenman silinirken hata oluştu." },
             { status: 500 }
         );
     }

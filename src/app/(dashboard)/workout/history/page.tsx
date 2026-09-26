@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, Trophy, Dumbbell, Activity, ChevronRight, Search, History } from "lucide-react";
+import { CalendarDays, Trophy, Dumbbell, Activity, ChevronRight, Search, History, Trash } from "lucide-react";
 import Link from "next/link";
 
 export default function HistoryPage() {
@@ -26,6 +26,24 @@ export default function HistoryPage() {
 
         fetchHistory();
     }, []);
+
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm("Bu antrenamnı silmek istediğinden emin misin?")) return;
+
+        try {
+            const res = await fetch(`/api/workouts?id=${id}`, {
+                method: "DELETE",
+            });
+
+            if (res.ok) {
+                setWorkouts((prev) => prev.filter((w) => w._id !== id));
+            }
+        }
+        catch (error) {
+            console.error("Antrenamn silinemedi", error);
+        }
+    }
 
     // Tarih formatlama (Örn: 22 Eylül 2026, Salı)
     const formatDate = (dateString: string) => {
@@ -126,11 +144,15 @@ export default function HistoryPage() {
                                                     </span>
                                                 )}
                                             </h3>
+
                                             <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mt-1">
                                                 <CalendarDays className="w-4 h-4" />
                                                 {formatDate(workout.date)}
                                             </div>
                                         </div>
+                                        <button className="ml-auto md:ml-0 p-2 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Antrenmanı Sil">
+                                            <Trash className="w-5 h-5 text-gray-600 hover:text-red-500 transition-colors" onClick={() => handleDelete(workout._id)} />
+                                        </button>
                                     </div>
 
                                     {/* Sağ Kısım: Metrikler (Mobilde alt alta, Webde yan yana) */}
@@ -181,8 +203,8 @@ export default function HistoryPage() {
                                                         <div
                                                             key={setIndex}
                                                             className={`flex justify-between items-center text-xs p-1.5 rounded-md px-2 ${set.isPR
-                                                                    ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-400 font-bold"
-                                                                    : "text-gray-600 dark:text-gray-400"
+                                                                ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-400 font-bold"
+                                                                : "text-gray-600 dark:text-gray-400"
                                                                 }`}
                                                         >
                                                             <div className="flex items-center gap-2">

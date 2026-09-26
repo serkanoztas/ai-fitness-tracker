@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flame, Save, Activity, Droplet, Wheat, Utensils } from "lucide-react";
+import { Flame, Save, Activity, Droplet, Wheat, Utensils, Trash } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+
+
 
 export default function NutritionPage() {
     const [logs, setLogs] = useState<any[]>([]);
@@ -51,6 +53,23 @@ export default function NutritionPage() {
             setIsSubmitting(false);
         }
     };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm("Bu beslenme kaydını silmek istediğinden emin misin?")) return;
+        try {
+            const res = await fetch(`/api/nutrition?id=${id}`, {
+                method: "DELETE",
+            });
+
+            if (res.ok) {
+                setLogs((prev) => prev.filter((l) => l._id !== id));
+            }
+        }
+        catch (error) {
+            console.error("Beslenme kaydı silinemedi", error);
+        }
+    }
+
 
     // Son girilen kaydı bul (Grafik için)
     const latestLog = logs.length > 0 ? logs[logs.length - 1] : null;
@@ -168,7 +187,18 @@ export default function NutritionPage() {
 
                 {/* SAĞ: Makro Dağılım Grafiği (5 Kolon) */}
                 <div className="lg:col-span-5 bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
-                    <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">Son Durum</h3>
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">Son Durum</h3>
+                        {latestLog && (
+                            <button
+                                className="ml-auto md:ml-1 p-2 rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors group"
+                                title="Beslenme kaydını Sil"
+                                onClick={() => handleDelete(latestLog._id)}
+                            >
+                                <Trash className="w-5 h-5 text-gray-400 group-hover:text-red-500 transition-colors" />
+                            </button>
+                        )}
+                    </div>
                     <p className="text-sm text-gray-500 mb-6">En son kaydettiğin makro dağılımı</p>
 
                     {isLoading ? (
