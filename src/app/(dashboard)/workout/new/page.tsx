@@ -28,6 +28,33 @@ export default function NewWorkoutPage() {
         },
     ]);
 
+    // 1. Sayfa ilk açıldığında LocalStorage'da yarım kalan bir antrenman var mı diye bak
+    useEffect(() => {
+        const savedDraft = localStorage.getItem("workoutDraft");
+        if (savedDraft) {
+            try {
+                const parsedDraft = JSON.parse(savedDraft);
+
+                // React'in render döngüsüyle çakışmayı önlemek için işlemi kuyruğa alıyoruz (0 ms)
+                setTimeout(() => {
+                    setExercises(parsedDraft);
+                }, 0);
+
+            } catch (e) {
+                console.error("Taslak okunamadı");
+            }
+        }
+    }, []);
+
+    // 2. Egzersiz listesinde her değişiklik olduğunda (kullanıcı yazı yazdıkça) bunu LocalStorage'a kaydet
+    useEffect(() => {
+        // Sadece boş değilse kaydet (sayfa ilk açıldığındaki boş hali üzerine yazmasın)
+        if (exercises.length > 1 || exercises[0].exerciseName !== "" || exercises[0].sets[0].weight !== "") {
+            localStorage.setItem("workoutDraft", JSON.stringify(exercises));
+        }
+    }, [exercises]);
+
+
     // --- VERİ ÇEKME İŞLEMİ ---
     useEffect(() => {
         const fetchExercises = async () => {
@@ -86,7 +113,6 @@ export default function NewWorkoutPage() {
 
         try {
             const payload = {
-                userId: "64a2b9f3e4b0c1a2d3e4f5f6", // Şimdilik dummy ID, ileride Auth eklenecek
                 splitType,
                 exercises: exercises
                     .map((ex) => ({
@@ -107,7 +133,11 @@ export default function NewWorkoutPage() {
 
             if (res.ok) {
                 alert("Antrenman başarıyla kaydedildi!");
-                // Formu temizleyip sıfırla
+
+                // 1. Taslağı hafızadan kalıcı olarak SİL
+                localStorage.removeItem("workoutDraft");
+
+                // 2. Formu ekranda temizle
                 setExercises([{ exerciseName: "", sets: [{ weight: "", reps: "" }] }]);
             } else {
                 alert("Kaydedilirken bir hata oluştu.");
