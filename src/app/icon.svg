@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" /> <!-- Blue 600 -->
+      <stop offset="100%" stop-color="#4F46E5" /> <!-- Indigo 600 -->
+    </linearGradient>
+    <linearGradient id="icon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e0e7ff" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Modern Yuvarlatılmış Kare Arka Plan (iOS Tarzı) -->
+  <rect width="512" height="512" rx="112" fill="url(#bg-gradient)" />
+  
+  <!-- AI ve Fitness Sentezi İkon: Dambıl ve Yapay Zeka Yıldızı -->
+  <g transform="translate(100, 100) scale(1.2)">
+    <!-- Dambıl -->
+    <path d="M40 180 h180 M60 140 v80 M80 120 v120 M180 140 v80 M160 120 v120" 
+          stroke="url(#icon-gradient)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- AI Yıldızı (Gemini Tarzı) -->
+    <path d="M120 20 C 120 70, 170 120, 220 120 C 170 120, 120 170, 120 220 C 120 170, 70 120, 20 120 C 70 120, 120 70, 120 20 Z" 
+          fill="#F59E0B" opacity="0.9" transform="translate(60, -90) scale(0.4)"/>
+  </g>
+</svg>
