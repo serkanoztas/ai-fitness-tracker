@@ -1,14 +1,6 @@
 import mongoose, { Schema, Model } from "mongoose";
 import { IUser } from "../types/index";
 
-const WeightLogSchema = new Schema(
-    {
-        date: { type: Date, required: true },
-        weight: { type: Number, required: true }
-    },
-    { _id: false }
-);
-
 const UserSchema = new mongoose.Schema<IUser>(
     {
         name: { type: String, required: true },
@@ -30,6 +22,13 @@ const UserSchema = new mongoose.Schema<IUser>(
                 date: { type: Date, default: Date.now },
             },
         ],
+
+        dailyGoals: {
+            calories: { type: Number, default: null },
+            protein: { type: Number, default: null },
+            carbs: { type: Number, default: null },
+            fat: { type: Number, default: null },
+        },
     },
     { timestamps: true }
 );

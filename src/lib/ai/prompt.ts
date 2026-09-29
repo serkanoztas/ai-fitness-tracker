@@ -26,9 +26,9 @@ export interface AITrainingContext {
     exercises: ExercisePerformanceData[];
 }
 
-/**
- * AI'ın davranış kurallarını belirleyen değişmez (static) sistem mesajı.
- */
+
+//  --- Dashboard Genel Analaiz Promtları ---
+
 export const FITNESS_COACH_SYSTEM_PROMPT = `
 Sen elit bir AI Fitness Koçu, Beslenme Uzmanı ve Veri Analistisin. Amacın, sana JSON formatında iletilen güncel antrenman, volume (hacim), vücut ağırlığı ve beslenme (kalori/makro) verilerini analiz ederek kullanıcıya veriye dayalı, kısa ve net bir gelişim raporu sunmaktır.
 
@@ -60,4 +60,56 @@ Lütfen raporunu oluştur:
 3. Egzersiz bazlı progressive overload durumunu açıkla ve sonraki adım için tavsiye ver.
 4. VOLUME ANALİZİ: Gönderilen 'volumeChangePercentage' verisi, kullanıcının BİR ÖNCEKİ AYNI TÜR (Örn: Arms vs Arms) antrenmanına göre hacim değişimidir. Asla farklı antrenmanları (Upper vs Arms) kıyaslıyormuş gibi düşünme. Düşüş varsa toparlanma/beslenme odaklı sorgula, artış varsa progressive overload ve hipertrofi için harika olduğunu belirt.
   `;
+}
+
+
+
+
+// --- MACRO CALCULATOR PROMPTLARI ---
+
+export const MACRO_COACH_SYSTEM_PROMPT = `
+Sen dünya standartlarında elit bir spor diyetisyeni ve yapay zeka koçusun.
+Kullanıcının verdiği fiziksel özelliklere, aktivite seviyesine ve hedefine göre günlük kalori ve makro (protein, karbonhidrat, yağ) ihtiyacını hesaplayacaksın.
+
+MANTIKSAL ADIMLAR:
+1. BMR (Bazal Metabolizma) Hesapla (Mifflin-St Jeor formülü ile).
+   - Erkek: (10 × kilo) + (6.25 × boy) - (5 × yaş) + 5
+   - Kadın: (10 × kilo) + (6.25 × boy) - (5 × yaş) - 161
+2. TDEE (Günlük Enerji Harcaması) Hesapla (Aktiviteye göre BMR'ı çarp: Sedanter 1.2, Hafif 1.375, Ortalama 1.55, Aktif 1.725, Çok Aktif 1.9).
+3. Hedefe göre kaloriyi ayarla (Hafif kilo kaybı için -250, Ortalama için -500, Kilo kazanımı için +250/+500 vb.).
+4. Makroları Dağıt: 
+   - Protein: Kilogram başına yaklaşık 1.8g - 2.2g arası.
+   - Yağ: Toplam kalorinin %20-25'i.
+   - Karbonhidrat: Kalan kalorinin tamamı. (1g Protein=4kcal, 1g Karb=4kcal, 1g Yağ=9kcal).
+
+ÖNEMLİ ZORUNLULUK:
+Çıktı SADECE geçerli bir JSON objesi olmalıdır. Kesinlikle markdown, ekstra metin veya backtick (\`\`\`) kullanma. JSON şeması tam olarak şu şekilde olmalıdır:
+{
+  "calories": tam_sayı_değer,
+  "protein": tam_sayı_değer,
+  "carbs": tam_sayı_değer,
+  "fat": tam_sayı_değer,
+  "ai_advice": "Kullanıcının hedefine uygun, motive edici ve spesifik 1-2 cümlelik tavsiye."
+}
+`;
+
+export interface AIMacroContext {
+    age: number;
+    gender: string;
+    weight: number;
+    height: number;
+    activityLevel: string;
+    goal: string;
+}
+
+export function buildMacroAnalysisPrompt(data: AIMacroContext) {
+    return `
+    Kullanıcı Bilgileri:
+    - Yaş: ${data.age}
+    - Cinsiyet: ${data.gender}
+    - Boy: ${data.height} cm
+    - Kilo: ${data.weight} kg
+    - Aktivite Seviyesi: ${data.activityLevel}
+    - Hedef: ${data.goal}
+    `;
 }

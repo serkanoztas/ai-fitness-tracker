@@ -37,6 +37,12 @@ export interface IUser extends Document {
         fat: number;
         date: Date;
     }[];
+    dailyGoals: {
+        calories: number | null;
+        protein: number | null;
+        carbs: number | null;
+        fat: number | null;
+    };
     createdAt: Date;
     updatedAt: Date;
 }

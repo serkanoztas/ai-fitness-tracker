@@ -11,10 +11,24 @@ export default function NutritionPage() {
     const [formData, setFormData] = useState({ calories: "", protein: "", carbs: "", fat: "" });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [goals, setGoals] = useState<any>(null);
 
     useEffect(() => {
         fetchLogs();
+        fetchGoals();
     }, []);
+
+    const fetchGoals = async () => {
+        try {
+            const res = await fetch("/api/user/goal");
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.calories) setGoals(data);
+            }
+        } catch (error) {
+            console.error("Hedefler çekilemedi", error);
+        }
+    };
 
     const fetchLogs = async () => {
         try {
@@ -250,7 +264,7 @@ export default function NutritionPage() {
                                 {/* Halkanın Ortasındaki Yazı */}
                                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                     <span className="text-2xl font-black text-gray-900 dark:text-white">
-                                        {latestLog.calories}
+                                        {latestLog.calories} {goals && <span className="text-sm font-semibold text-gray-400">/ {goals.calories}</span>}
                                     </span>
                                     <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">kcal</span>
                                 </div>
@@ -258,15 +272,23 @@ export default function NutritionPage() {
 
                             {/* Grafik Altı Lejant (Açıklamalar) */}
                             <div className="flex justify-center gap-6 mt-6 w-full">
-                                {macroData.map((macro, i) => (
-                                    <div key={i} className="flex flex-col items-center">
-                                        <div className="flex items-center gap-1.5 mb-1">
-                                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: macro.color }}></div>
-                                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">{macro.name}</span>
+                                {macroData.map((macro, i) => {
+                                    // Makronun ingilizce anahtarını bul (hedefler objesinden çekmek için)
+                                    const key = macro.name === "Protein" ? "protein" : macro.name === "Karbonhidrat" ? "carbs" : "fat";
+                                    const goalValue = goals ? goals[key] : null;
+
+                                    return (
+                                        <div key={i} className="flex flex-col items-center">
+                                            <div className="flex items-center gap-1.5 mb-1">
+                                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: macro.color }}></div>
+                                                <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">{macro.name}</span>
+                                            </div>
+                                            <span className="font-bold text-gray-900 dark:text-white">
+                                                {macro.value}g {goalValue && <span className="text-xs text-gray-400 font-medium">/ {goalValue}g</span>}
+                                            </span>
                                         </div>
-                                        <span className="font-bold text-gray-900 dark:text-white">{macro.value}g</span>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         </div>
                     )}

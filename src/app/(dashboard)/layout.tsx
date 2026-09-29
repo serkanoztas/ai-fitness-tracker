@@ -3,6 +3,7 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Dumbbell, History, Scale, LogOut, Utensils } from "lucide-react";
+import AIMacroAssistant from "@/components/AIMacroAssistant";
 
 const NAV_ITEMS = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -115,7 +116,7 @@ export default function DashboardLayout({
             <main className="md:pl-64 pb-24 md:pb-6 min-h-screen transition-all duration-300 ease-in-out">
                 {children}
             </main>
-
+            <AIMacroAssistant />
         </div>
     );
 } 
