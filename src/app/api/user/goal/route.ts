@@ -13,13 +13,17 @@ export async function POST(req: Request) {
         const { calories, protein, carbs, fat } = body;
 
         await connectToDatabase();
-        
+
         // Kullanıcının hedeflerini güncelle
         const updatedUser = await User.findByIdAndUpdate(
             session.user.id,
             { $set: { dailyGoals: { calories, protein, carbs, fat } } },
             { new: true }
         );
+
+        if (!updatedUser) {
+            return NextResponse.json({ error: "Kullanıcı bulunamadı" }, { status: 404 });
+        }
 
         return NextResponse.json({ message: "Hedef kaydedildi", goals: updatedUser.dailyGoals }, { status: 200 });
     } catch (error) {
