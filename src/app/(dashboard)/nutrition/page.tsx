@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flame, Save, Activity, Droplet, Wheat, Utensils, Trash } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { Flame, Save, Activity, Droplet, Wheat, Utensils, Trash, TrendingUp } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 
 
 
@@ -82,6 +82,17 @@ export default function NutritionPage() {
             { name: "Yağ", value: latestLog.fat, color: "#EF4444" }, // Kırmızı
         ].filter((m) => m.value > 0) // Değeri 0 olanları grafikte gösterme
         : [];
+
+
+    // YENİ: GEÇMİŞ GRAFİĞİ İÇİN VERİ HAZIRLIĞI (Son 7 Kayıt)
+    const historyData = logs.slice(-7).map((log) => {
+        // Mongo'dan gelen tarihi daha okunaklı yap (Örn: "29 Eyl")
+        const dateObj = new Date(log.createdAt || log.date || new Date());
+        return {
+            tarih: new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short" }).format(dateObj),
+            kalori: log.calories,
+        };
+    });
 
     return (
         <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
@@ -262,6 +273,45 @@ export default function NutritionPage() {
                 </div>
 
             </div>
+
+
+            {/*Kalori Geçmişi (Alan Grafiği) */}
+            {logs.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-2 mb-6">
+                        <TrendingUp className="w-5 h-5 text-orange-500" />
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-white">Kalori Geçmişi (Son 7 Kayıt)</h3>
+                    </div>
+                    <div className="h-72 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={historyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorKalori" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.4} />
+                                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                <XAxis dataKey="tarih" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
+                                <Tooltip
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    itemStyle={{ color: '#f97316', fontWeight: 'bold' }}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="kalori"
+                                    stroke="#f97316"
+                                    strokeWidth={3}
+                                    fillOpacity={1}
+                                    fill="url(#colorKalori)"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
