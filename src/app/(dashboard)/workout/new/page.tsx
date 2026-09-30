@@ -227,7 +227,7 @@ export default function NewWorkoutPage() {
                                     </div>
                                     <div className="col-span-4">
                                         <input
-                                            type="number"
+                                            type="any"
                                             value={set.weight}
                                             onChange={(e) => updateSet(exerciseIndex, setIndex, "weight", e.target.value)}
                                             placeholder="0"
@@ -238,7 +238,7 @@ export default function NewWorkoutPage() {
                                     </div>
                                     <div className="col-span-4">
                                         <input
-                                            type="number"
+                                            type="any"
                                             value={set.reps}
                                             onChange={(e) => updateSet(exerciseIndex, setIndex, "reps", e.target.value)}
                                             placeholder="0"
