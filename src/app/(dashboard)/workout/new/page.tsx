@@ -15,6 +15,7 @@ export default function NewWorkoutPage() {
     // Form stateleri
     const [splitType, setSplitType] = useState("Upper");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoaded, setIsLoaded] = useState(false);
 
     // Dinamik Egzersiz ve Set State'i
     const [exercises, setExercises] = useState<{
@@ -28,31 +29,41 @@ export default function NewWorkoutPage() {
         },
     ]);
 
-    // 1. Sayfa ilk açıldığında LocalStorage'da yarım kalan bir antrenman var mı diye bak
+    // Sayfa ilk açıldığında LocalStorage'da yarım kalan bir antrenman var mı diye bak
     useEffect(() => {
         const savedDraft = localStorage.getItem("workoutDraft");
         if (savedDraft) {
             try {
                 const parsedDraft = JSON.parse(savedDraft);
-
-                // React'in render döngüsüyle çakışmayı önlemek için işlemi kuyruğa alıyoruz (0 ms)
                 setTimeout(() => {
                     setExercises(parsedDraft);
+                    setIsLoaded(true);
                 }, 0);
-
             } catch (e) {
                 console.error("Taslak okunamadı");
+                setIsLoaded(true);
             }
+        } else {
+            setIsLoaded(true);
         }
     }, []);
 
-    // 2. Egzersiz listesinde her değişiklik olduğunda (kullanıcı yazı yazdıkça) bunu LocalStorage'a kaydet
+    // Egzersiz listesinde her değişiklik olduğunda kaydet veya sil
     useEffect(() => {
-        // Sadece boş değilse kaydet (sayfa ilk açıldığındaki boş hali üzerine yazmasın)
-        if (exercises.length > 1 || exercises[0].exerciseName !== "" || exercises[0].sets[0].weight !== "") {
+        // Eğer sayfa daha yeni açıldıysa ve eski taslağı okuma işlemi bitmediyse DUR!
+        if (!isLoaded) return;
+
+        // Formun tamamen boş olup olmadığını kontrol ediyoruz
+        const isFormEmpty = exercises.length === 1 && exercises[0].exerciseName === "" && exercises[0].sets[0].weight === "";
+
+        if (isFormEmpty) {
+            // Eğer kullanıcı sildiyse veya form tamamen boşsa, taslağı hafızadan uçur
+            localStorage.removeItem("workoutDraft");
+        } else {
+            // Eğer formda en ufak bir veri bile varsa, güncel halini kaydet
             localStorage.setItem("workoutDraft", JSON.stringify(exercises));
         }
-    }, [exercises]);
+    }, [exercises, isLoaded]);
 
 
     // --- VERİ ÇEKME İŞLEMİ ---

@@ -85,7 +85,7 @@ MANTIKSAL ADIMLAR:
 ÖNEMLİ ZORUNLULUK:
 Çıktı SADECE geçerli bir JSON objesi olmalıdır. Kesinlikle markdown, ekstra metin veya backtick (\`\`\`) kullanma. JSON şeması tam olarak şu şekilde olmalıdır:
 {
-  "calories": tam_sayı_değer,
+  "calories": tam_sayı_değer,   
   "protein": tam_sayı_değer,
   "carbs": tam_sayı_değer,
   "fat": tam_sayı_değer,
