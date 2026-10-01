@@ -51,7 +51,7 @@ export default function DashboardPage() {
         setAiAnalysis(null);
 
         try {
-            const res = await fetch("/api/ai-analysis");
+            const res = await fetch("/api/ai/analys");
             const result = await res.json();
 
             if (res.ok) {
