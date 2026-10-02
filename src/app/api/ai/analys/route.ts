@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { FITNESS_COACH_SYSTEM_PROMPT, buildWorkoutAnalysisPrompt, AITrainingContext } from "@/lib/ai/prompt";
+import "@/models/Exercise";
 
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
