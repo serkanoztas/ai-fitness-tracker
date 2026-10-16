@@ -148,3 +148,39 @@ export async function DELETE(req: Request) {
         );
     }
 }
+
+export async function PATCH(req: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
+        }
+
+        await connectToDatabase();
+
+        const body = await req.json();
+        const { workoutId, splitType } = body;
+
+        if (!workoutId || !splitType) {
+            return NextResponse.json({ error: "Eksik veri gönderildi" }, { status: 400 });
+        }
+
+        const updatedWorkout = await Workout.findOneAndUpdate(
+            { _id: workoutId, user: new mongoose.Types.ObjectId(session.user.id) },
+            { $set: { splitType: splitType } },
+            { new: true }
+        );
+
+        if (!updatedWorkout) {
+            return NextResponse.json({ error: "Antrenman bulunamadı veya yetkiniz yok" }, { status: 404 });
+        }
+
+        return NextResponse.json(updatedWorkout, { status: 200 });
+
+
+    } catch (error) {
+        console.error("Antrenman PATCH Hatası:", error);
+        return NextResponse.json({ error: "Antrenman güncellenemedi." }, { status: 500 });
+    }
+
+}

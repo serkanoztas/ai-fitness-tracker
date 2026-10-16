@@ -20,7 +20,7 @@ export default function NewWorkoutPage() {
     // Dinamik Egzersiz ve Set State'i
     const [exercises, setExercises] = useState<{
         exerciseName: string;
-        exerciseId?: string; // ? işareti bunun opsiyonel olduğunu belirtir
+        exerciseId?: string;
         sets: { weight: string; reps: string; }[];
     }[]>([
         {
@@ -36,10 +36,18 @@ export default function NewWorkoutPage() {
             try {
                 const parsedDraft = JSON.parse(savedDraft);
                 setTimeout(() => {
-                    setExercises(parsedDraft);
+                    // Eski taslaklar (sadece dizi) ile yeni taslakları (obje) ayırt edelim
+                    if (Array.isArray(parsedDraft)) {
+                        setExercises(parsedDraft);
+                    } else {
+                        setExercises(parsedDraft.exercises);
+                        if (parsedDraft.splitType) {
+                            setSplitType(parsedDraft.splitType);
+                        }
+                    }
                     setIsLoaded(true);
                 }, 0);
-            } catch (e) {
+            } catch (error) {
                 console.error("Taslak okunamadı");
                 setIsLoaded(true);
             }
@@ -48,22 +56,19 @@ export default function NewWorkoutPage() {
         }
     }, []);
 
-    // Egzersiz listesinde her değişiklik olduğunda kaydet veya sil
+    // Egzersiz listesinde veya Split tipinde her değişiklik olduğunda kaydet veya sil
     useEffect(() => {
-        // Eğer sayfa daha yeni açıldıysa ve eski taslağı okuma işlemi bitmediyse DUR!
         if (!isLoaded) return;
 
-        // Formun tamamen boş olup olmadığını kontrol ediyoruz
         const isFormEmpty = exercises.length === 1 && exercises[0].exerciseName === "" && exercises[0].sets[0].weight === "";
 
         if (isFormEmpty) {
-            // Eğer kullanıcı sildiyse veya form tamamen boşsa, taslağı hafızadan uçur
             localStorage.removeItem("workoutDraft");
         } else {
-            // Eğer formda en ufak bir veri bile varsa, güncel halini kaydet
-            localStorage.setItem("workoutDraft", JSON.stringify(exercises));
+            // Hem split tipini hem de egzersizleri bir obje olarak kaydediyoruz
+            localStorage.setItem("workoutDraft", JSON.stringify({ splitType, exercises }));
         }
-    }, [exercises, isLoaded]);
+    }, [exercises, splitType, isLoaded]);
 
 
     // --- VERİ ÇEKME İŞLEMİ ---
@@ -150,6 +155,7 @@ export default function NewWorkoutPage() {
 
                 // 2. Formu ekranda temizle
                 setExercises([{ exerciseName: "", sets: [{ weight: "", reps: "" }] }]);
+                setSplitType("Upper");
             } else {
                 alert("Kaydedilirken bir hata oluştu.");
             }
