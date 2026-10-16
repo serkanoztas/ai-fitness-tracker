@@ -60,9 +60,16 @@ export default function NewWorkoutPage() {
     useEffect(() => {
         if (!isLoaded) return;
 
-        const isFormEmpty = exercises.length === 1 && exercises[0].exerciseName === "" && exercises[0].sets[0].weight === "";
+        // Formun gerçekten ilk baştaki "varsayılan" halinde olup olmadığına bakıyoruz.
+        const isDefaultState =
+            splitType === "Upper" &&
+            exercises.length === 1 &&
+            exercises[0].exerciseName === "" &&
+            exercises[0].sets.length === 1 &&
+            exercises[0].sets[0].weight === "" &&
+            exercises[0].sets[0].reps === "";
 
-        if (isFormEmpty) {
+        if (isDefaultState) {
             localStorage.removeItem("workoutDraft");
         } else {
             // Hem split tipini hem de egzersizleri bir obje olarak kaydediyoruz
