@@ -16,11 +16,18 @@ export default function ProfilePage() {
     // Gizli dosya seçiciyi tetiklemek için referans
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Oturum verisi geldiğinde stateleri doldur
+    // Oturum ve LocalStorage verisi geldiğinde stateleri doldur
     useEffect(() => {
         if (session?.user) {
             setName(session.user.name || "");
-            setImage(session.user.image || null);
+        }
+        
+        // YENİ: LocalStorage'da kayıtlı bir profil resmi varsa onu öncelikli al
+        const storedImg = localStorage.getItem("userProfileImage");
+        if (storedImg) {
+            setImage(storedImg);
+        } else if (session?.user?.image) {
+            setImage(session.user.image);
         }
     }, [session]);
 
@@ -48,7 +55,7 @@ export default function ProfilePage() {
         try {
             const base64 = await convertToBase64(file);
             setImage(base64);
-            setMessage({ type: "", text: "" }); // Hata varsa temizle
+            setMessage({ type: "", text: "" }); 
         } catch (error) {
             console.error("Resim dönüştürme hatası", error);
             setMessage({ type: "error", text: "Resim işlenirken bir hata oluştu." });
@@ -71,11 +78,13 @@ export default function ProfilePage() {
             if (res.ok) {
                 setMessage({ type: "success", text: "Profil başarıyla güncellendi!" });
                 
-                // NextAuth Session'ını Frontend'de anında güncelle
-                await update({
-                    name: name,
-                    image: image
-                });
+                await update({ name: name });
+                
+                if (image) {
+                    localStorage.setItem("userProfileImage", image);
+                    // Layout ve diğer bileşenlerin haberdar olması için event fırlatıyoruz
+                    window.dispatchEvent(new Event("profileImageUpdated"));
+                }
             } else {
                 const errorData = await res.json();
                 setMessage({ type: "error", text: errorData.error || "Güncellenirken bir hata oluştu." });

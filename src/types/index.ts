@@ -29,6 +29,7 @@ export interface IUser extends Document {
     name: string;
     email: string;
     password?: string;
+    image?: string;
     weightLogs: IWeightLog[];
     nutritionLogs: {
         calories: number;

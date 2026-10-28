@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -23,8 +24,28 @@ export default function DashboardLayout({
     
     const userName = session?.user?.name || "Şampiyon"; 
     const userInitial = userName.charAt(0).toUpperCase();
-    const userImage = session?.user?.image; // Profil fotoğrafını session'dan alıyoruz
+    
+    // 1. Başlangıçta her zaman null olmalı (Sunucu ve ilk client render eşleşsin diye)
+    const [localImage, setLocalImage] = useState<string | null>(null);
 
+    useEffect(() => {
+        // 2. Bileşen yüklendikten sonra localStorage veya session'dan resmi alıyoruz
+        const storedImg = localStorage.getItem("userProfileImage");
+        if (storedImg) {
+            setLocalImage(storedImg);
+        } else if (session?.user?.image) {
+            setLocalImage(session.user.image);
+        }
+
+        // Profil sayfasında resim güncellendiğinde tetiklenecek dinleyici
+        const handleImageUpdate = () => {
+            const updated = localStorage.getItem("userProfileImage");
+            if (updated) setLocalImage(updated);
+        };
+
+        window.addEventListener("profileImageUpdated", handleImageUpdate);
+        return () => window.removeEventListener("profileImageUpdated", handleImageUpdate);
+    }, [session]);
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
 
@@ -64,8 +85,8 @@ export default function DashboardLayout({
                         
                         {/* Kullanıcı Profile Erişim */}
                         <Link href="/profile" className="flex items-center gap-3 overflow-hidden group flex-1 mr-2 cursor-pointer">
-                            {userImage ? (
-                                <img src={userImage} alt={userName} className="w-10 h-10 shrink-0 rounded-full object-cover border border-blue-200 dark:border-blue-800" />
+                            {localImage ? (
+                                <img src={localImage} alt={userName} className="w-10 h-10 shrink-0 rounded-full object-cover border border-blue-200 dark:border-blue-800" />
                             ) : (
                                 <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold border border-blue-200 dark:border-blue-800">
                                     {userInitial}
@@ -116,8 +137,8 @@ export default function DashboardLayout({
                             pathname === "/profile" ? "text-blue-600 dark:text-blue-400" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
                         }`}
                     >
-                        {userImage ? (
-                            <img src={userImage} alt={userName} className="w-6 h-6 rounded-full object-cover mb-1 border border-gray-300" />
+                        {localImage ? (
+                            <img src={localImage} alt={userName} className="w-6 h-6 rounded-full object-cover mb-1 border border-gray-300" />
                         ) : (
                             <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-[10px] mb-1">
                                 {userInitial}

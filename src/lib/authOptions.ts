@@ -42,16 +42,31 @@ export const authOptions: NextAuthOptions = {
             }
         })
     ],
-    callbacks: {
-        async jwt({ token, user }) {
+callbacks: {
+        async jwt({ token, user, trigger, session }) {
             if (user) {
                 token.id = user.id;
+                token.name = user.name;
+                
+                // Eğer resim Google URL'si ise (kısadır) al, Base64 ise (devasadır) alma!
+                if (user.image && user.image.length < 1000) {
+                    token.image = user.image; 
+                }
             }
+
+            if (trigger === "update" && session) {
+                if (session.name) token.name = session.name;
+                // Session.image'i burada token'a KESİNLİKLE EKMİYORUZ (Cookie sınırını aşmamak için)
+            }
+
             return token;
         },
         async session({ session, token }) {
-            if (session.user) {
+            // Token'daki güncel bilgileri Frontend'in göreceği Session'a aktar
+            if (token && session.user) {
                 session.user.id = token.id as string;
+                session.user.name = token.name as string;
+                session.user.image = token.image as string; 
             }
             return session;
         }
