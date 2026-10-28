@@ -20,13 +20,15 @@ export default function DashboardLayout({
 }) {
     const pathname = usePathname();
     const { data: session } = useSession();
-    const userName = session?.user?.name || "Şampiyon"; //kullanıcı adı yoksa şampiyon yazar default olarak
+    
+    const userName = session?.user?.name || "Şampiyon"; 
     const userInitial = userName.charAt(0).toUpperCase();
+    const userImage = session?.user?.image; // Profil fotoğrafını session'dan alıyoruz
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
 
-            {/* DESKTOP SIDEBAR (Sadece md ve üzeri ekranlarda görünür) */}
+            {/* DESKTOP SIDEBAR */}
             <aside className="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 z-50 shadow-sm">
                 <div className="p-6 flex items-center gap-3">
                     <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl text-white shadow-md">
@@ -56,24 +58,29 @@ export default function DashboardLayout({
                     })}
                 </nav>
 
-                {/* Kullanıcı Profili Özeti (Alt kısım) */}
                 {/* Kullanıcı Profili Özeti ve Çıkış Yap (Alt kısım) */}
                 <div className="p-4 m-4 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold border border-blue-200 dark:border-blue-800">
-                                {userInitial}
-                            </div>
-                            <div className="text-sm overflow-hidden">
+                        
+                        {/* Kullanıcı Profile Erişim */}
+                        <Link href="/profile" className="flex items-center gap-3 overflow-hidden group flex-1 mr-2 cursor-pointer">
+                            {userImage ? (
+                                <img src={userImage} alt={userName} className="w-10 h-10 shrink-0 rounded-full object-cover border border-blue-200 dark:border-blue-800" />
+                            ) : (
+                                <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold border border-blue-200 dark:border-blue-800">
+                                    {userInitial}
+                                </div>
+                            )}
+                            <div className="text-sm overflow-hidden group-hover:opacity-80 transition-opacity">
                                 <p className="font-bold truncate text-gray-900 dark:text-white">{userName}</p>
-                                <p className="text-xs text-gray-500 truncate">Gelişim devam ediyor</p>
+                                <p className="text-xs text-blue-500 font-medium truncate">Profili Düzenle</p>
                             </div>
-                        </div>
+                        </Link>
 
                         {/* Çıkış Yap Butonu */}
                         <button
                             onClick={() => signOut({ callbackUrl: '/login' })}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors shrink-0"
                             title="Çıkış Yap"
                         >
                             <LogOut className="w-5 h-5" />
@@ -82,7 +89,7 @@ export default function DashboardLayout({
                 </div>
             </aside>
 
-            {/* MOBILE BOTTOM NAV (Sadece mobil ekranlarda görünür) */}
+            {/* MOBILE BOTTOM NAV */}
             <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 z-50 pb-safe">
                 <div className="flex justify-around items-center p-2">
                     {NAV_ITEMS.map((item) => {
@@ -101,22 +108,31 @@ export default function DashboardLayout({
                             </Link>
                         );
                     })}
-                    <button
-                        onClick={() => signOut({ callbackUrl: '/login' })}
-                        className="flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-colors text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30"
+                    
+                    {/* Mobilde de profile gitmek için bir link */}
+                    <Link
+                        href="/profile"
+                        className={`flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-colors ${
+                            pathname === "/profile" ? "text-blue-600 dark:text-blue-400" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        }`}
                     >
-                        <LogOut className="w-5 h-5 mb-1 stroke-2" />
-                        <span className="text-[10px] font-semibold">Çıkış</span>
-                    </button>
+                        {userImage ? (
+                            <img src={userImage} alt={userName} className="w-6 h-6 rounded-full object-cover mb-1 border border-gray-300" />
+                        ) : (
+                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-[10px] mb-1">
+                                {userInitial}
+                            </div>
+                        )}
+                        <span className="text-[10px] font-semibold">Profil</span>
+                    </Link>
                 </div>
             </nav>
 
             {/* MAIN CONTENT AREA */}
-            {/* Mobilde alt menü kadar boşluk (pb-24), webde sidebar kadar sol boşluk (md:pl-64) */}
             <main className="md:pl-64 pb-24 md:pb-6 min-h-screen transition-all duration-300 ease-in-out">
                 {children}
             </main>
             <AIMacroAssistant />
         </div>
     );
-} 
+}

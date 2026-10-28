@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Activity, Droplet, Flame, Scale, TrendingUp, Dumbbell, Zap, Bot } from "lucide-react";
 import Link from "next/link";
+import { Activity, Droplet, Flame, Scale, TrendingUp, Dumbbell, Zap, Bot, Utensils, Target, BatteryCharging, Timer } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {
     AreaChart,
@@ -15,6 +15,34 @@ import {
     ResponsiveContainer,
 } from "recharts";
 
+const MOTIVATIONS = [
+    {
+        title: "İstikrar Anahtardır",
+        text: "Hacim grafiğindeki yükselen trend (progressive overload), kas kütlesi kazanımının en büyük göstergesidir.",
+        icon: TrendingUp
+    },
+    {
+        title: "Mutfakta İnşa Et",
+        text: "Antrenmanda yıktığın kasları mutfakta inşa edersin. Günlük makrolarını takip etmeyi unutma.",
+        icon: Utensils
+    },
+    {
+        title: "Disiplin > Motivasyon",
+        text: "Motivasyon seni başlatır, disiplin ise devam etmeni sağlar. Bugün sınırlarını zorla.",
+        icon: Target
+    },
+    {
+        title: "Dinlenme = Gelişim",
+        text: "Kaslar çalışırken değil, dinlenirken büyür. Uyku ve toparlanma sürecine sadık kal.",
+        icon: BatteryCharging
+    },
+    {
+        title: "Sürece Güven",
+        text: "Gelişim zaman alır. Aynadaki değişimi görmek için sabırlı ol ve asla pes etme.",
+        icon: Timer
+    }
+];
+
 export default function DashboardPage() {
     const { data: session } = useSession();
     const [data, setData] = useState<any>(null);
@@ -24,6 +52,18 @@ export default function DashboardPage() {
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
+
+
+    // Motivasyon Index State'i
+    const [quoteIndex, setQuoteIndex] = useState(0);
+
+    // değişim efekti
+    useEffect(() => {
+     const interval = setInterval(() => {
+            setQuoteIndex((prev) => (prev + 1) % MOTIVATIONS.length);
+        }, 3500);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -78,6 +118,9 @@ export default function DashboardPage() {
     }
 
     const userName = session?.user?.name?.split(" ")[0] || "Şampiyon";
+    const currentQuote = MOTIVATIONS[quoteIndex];
+    const CurrentIcon = currentQuote.icon;  
+
 
     return (
         <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-8">
@@ -283,15 +326,21 @@ export default function DashboardPage() {
                     )}
                 </div>
 
-                {/* Sağ Taraf - Ekstra Bilgi veya Motivasyon Alanı */}
+                {/* Sağ Taraf - Dinamik Motivasyon Alanı */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center text-center">
-                    <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/30 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <TrendingUp className="w-10 h-10" />
+                    {/* key={} sayesinde ikon ve yazı aynı anda fade in/out animasyonuna girer */}
+                    <div key={quoteIndex} className="animate-in fade-in zoom-in duration-500">
+                        <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/30 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <CurrentIcon className="w-10 h-10" />
+                        </div>
+                        
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                            {currentQuote.title}
+                        </h3>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm h-16 flex items-center justify-center">
+                            {currentQuote.text}
+                        </p>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">İstikrar Anahtardır</h3>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">
-                        Hacim grafiğindeki yükselen trend (progressive overload), kas kütlesi kazanımının en büyük ve güvenilir göstergesidir.
-                    </p>
                 </div>
             </div>
 
