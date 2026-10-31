@@ -9,7 +9,7 @@ Kişisel antrenman hacminizi (progressive overload), günlük makro/kalori tüke
 
 ## 📸 Ekran Görüntüleri
 
-*(Projenin arayüzüne ait görseller)*
+_(Projenin arayüzüne ait görseller)_
 
 <div align="center">
   <img src="screenshots/aifitness3.png" alt="Dashboard Görünümü" width="400" />
@@ -19,23 +19,27 @@ Kişisel antrenman hacminizi (progressive overload), günlük makro/kalori tüke
   <img src="screenshots/aifitness5.png" alt="Beslenme Takibi" width="400" />
   <br/>
   <img src="screenshots/aifitness6.png" alt="Kilo Takibi" width="400" />
+  <img src="screenshots/aifitness10.png" alt="Profil Düzenleme" width="400" />
 </div>
 
 ## ✨ Özellikler
 
-- **🤖 Yapay Zeka Koçu:** Son antrenmanlarınızı ve beslenmenizi analiz ederek kas gelişimi, progressive overload ve toparlanma hakkında Gemini AI destekli özel raporlar sunar (Aynı bölge antrenmanlarını kıyaslama mantığıyla çalışır).
-- **📊 Gelişmiş Dashboard:** Recharts entegrasyonu ile antrenman hacmi (volume) trendlerinizi grafiksel olarak izleyin.
+- **🤖 Yapay Zeka Koçu:** Son antrenmanlarınızı ve beslenmenizi analiz ederek kas gelişimi, progressive overload ve toparlanma hakkında Gemini AI destekli özel raporlar sunar.
+- **🧮 AI Makro Asistanı (Hesaplayıcı):** Mevcut vücut verilerinize ve fitness hedeflerinize göre günlük almanız gereken ideal kalori ve makro (protein, karbonhidrat, yağ) değerlerini akıllıca hesaplar.
+- **📊 Gelişmiş Dashboard:** Recharts entegrasyonu ile antrenman hacmi (volume) trendlerinizi grafiksel olarak izleyin ve dinamik motivasyon mesajları alın.
+- **🔄 Antrenman Şablonları (Rutinler):** Sık yaptığınız antrenman programlarını şablon olarak kaydedin ve tek tıkla yeni antrenman formuna otomatik yükleyin.
 - **🥩 Beslenme ve Makro Takibi:** Günlük kalori, protein, karbonhidrat ve yağ alımlarınızı kaydedin ve görselleştirin.
-- **🏋️‍♂️ Antrenman Günlüğü:** Egzersizleri, setleri, tekrarları ve ağırlıkları kaydedin. Kişisel rekorlarınızı (PR) takip edin.
+- **🏋️‍♂️ Antrenman Günlüğü:** Egzersizleri, setleri, tekrarları ve ağırlıkları kaydedin. Form üzerinde yerel (localStorage) taslak kaydetme ile veri kaybını önleyin.
+- **👤 Profil Özelleştirme:** Kullanıcı adınızı ve profil fotoğrafınızı (Base64 ile veritabanına) kaydedin, NextAuth entegrasyonu ile arayüzde anında güncelleyin.
 - **🔐 Güvenli Altyapı:** NextAuth ile kullanıcı doğrulama ve veritabanında (MongoDB) kullanıcıya özel izole veri yönetimi.
 
 ## 🛠️ Kullanılan Teknolojiler
 
-- **Frontend:** Next.js (App Router), React, Tailwind CSS, Recharts, Lucide Icons
+- **Frontend:** Next.js 14+ (App Router), React, Tailwind CSS, Recharts, Lucide Icons
 - **Backend:** Next.js API Routes, Node.js
 - **Veritabanı:** MongoDB (Mongoose)
-- **Yapay Zeka:** Google Generative AI (Gemini 3.5 / 2.5 Flash Lite)
-- **Kimlik Doğrulama:** NextAuth.js (Bcrypt şifreleme)
+- **State Yönetimi & Optimizasyon:** NextAuth Session, LocalStorage API, Hydration Safe Rendering
+- **Yapay Zeka:** Google Generative AI (Gemini API)
 
 ## 🚀 Kurulum (Local Development)
 
@@ -68,4 +72,5 @@ npm run dev
 Tarayıcınızda [http://localhost:3000](http://localhost:3000) adresine giderek uygulamayı görüntüleyebilirsiniz.
 
 ## 🌍 Canlı Yayın (Deploy)
+
 Bu proje [Vercel](https://vercel.com/) üzerinde yayına alınmak üzere optimize edilmiştir. Vercel paneli üzerinden GitHub reponuzu bağlayıp ortam değişkenlerini (Environment Variables) girerek tek tıkla yayına alabilirsiniz.
