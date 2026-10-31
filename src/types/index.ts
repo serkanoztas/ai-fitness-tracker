@@ -1,4 +1,5 @@
 import { Document, Types } from "mongoose";
+import mongoose from "mongoose";
 
 export type MuscleGroup = "Chest" | "Back" | "Shoulders" | "Legs" | "Arms" | "Core" | "Other";
 export type WorkoutSplit = "Upper" | "Lower" | "Push" | "Pull" | "Legs" | "FullBody" | "Other";
@@ -62,6 +63,18 @@ export interface IWorkout extends Document {
     splitType: WorkoutSplit;
     exercises: IWorkoutExercise[];
     totalVolume: number; // Tüm egzersizlerin toplam volume değeri
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface IRoutine extends Document {
+    user: Types.ObjectId | IUser; // IWorkout'taki gibi referans esnekliği sağlar
+    routineName: string;
+    splitType: WorkoutSplit; // kendi belitlediğimiz tipi kullanıyoruz
+    exercises: {
+        exerciseName: string;
+        sets: number;
+    }[];
     createdAt: Date;
     updatedAt: Date;
 }
