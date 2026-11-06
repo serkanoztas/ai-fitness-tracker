@@ -1,167 +1,246 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Plus, Trash2, Save, Dumbbell, BookmarkPlus, LibraryBig, Loader2 } from "lucide-react";
 
-// Tip tanımlamaları
-import { IRoutine } from "@/types"; // Veya tip dosyan neredeyse
-
 const SPLIT_TYPES = ["Upper", "Lower", "Push", "Pull", "Legs", "FullBody", "Other", "Arms"];
+const DRAFT_KEY = "workoutDraft";
+const DRAFT_DEBOUNCE_MS = 400;
+
+// --- Tipler ---
+
+interface SetForm {
+    id: string;
+    weight: string;
+    reps: string;
+}
+
+interface ExerciseForm {
+    id: string;
+    exerciseName: string;
+    sets: SetForm[];
+}
+
+interface RoutineTemplate {
+    _id: string;
+    routineName: string;
+    splitType: string;
+    exercises: { exerciseName: string; sets: number }[];
+}
+
+// --- Yardımcılar ---
+
+// Listelerde stabil key için benzersiz id (crypto.randomUUID yalnızca güvenli bağlamlarda vardır)
+const makeId = () =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+const createSet = (): SetForm => ({ id: makeId(), weight: "", reps: "" });
+const createExercise = (): ExerciseForm => ({ id: makeId(), exerciseName: "", sets: [createSet()] });
+
+/** localStorage'dan gelen (eski formatlı / bozuk olabilecek) veriyi forma uygun hale getirir. */
+function normalizeExercises(raw: unknown): ExerciseForm[] {
+    if (!Array.isArray(raw)) return [createExercise()];
+
+    const result = raw
+        .filter((ex) => ex && typeof ex === "object")
+        .map((ex) => {
+            const sets = Array.isArray(ex.sets) ? ex.sets : [];
+            return {
+                id: makeId(),
+                exerciseName: typeof ex.exerciseName === "string" ? ex.exerciseName : "",
+                sets: (sets.length > 0 ? sets : [{}]).map((s: Partial<SetForm>) => ({
+                    id: makeId(),
+                    weight: typeof s?.weight === "string" ? s.weight : "",
+                    reps: typeof s?.reps === "string" ? s.reps : "",
+                })),
+            };
+        });
+
+    return result.length > 0 ? result : [createExercise()];
+}
+
+function isDefaultForm(splitType: string, exercises: ExerciseForm[]) {
+    return (
+        splitType === "Upper" &&
+        exercises.length === 1 &&
+        exercises[0].exerciseName === "" &&
+        exercises[0].sets.length === 1 &&
+        exercises[0].sets[0].weight === "" &&
+        exercises[0].sets[0].reps === ""
+    );
+}
+
+function loadDraft(): { splitType: string; exercises: ExerciseForm[] } {
+    try {
+        const saved = localStorage.getItem(DRAFT_KEY);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            // Eski format: doğrudan egzersiz dizisi
+            const rawExercises = Array.isArray(parsed) ? parsed : parsed?.exercises;
+            const splitType = !Array.isArray(parsed) && SPLIT_TYPES.includes(parsed?.splitType) ? parsed.splitType : "Upper";
+            return { splitType, exercises: normalizeExercises(rawExercises) };
+        }
+    } catch {
+        console.error("Taslak okunamadı");
+    }
+    return { splitType: "Upper", exercises: [createExercise()] };
+}
+
+function clearDraft() {
+    try {
+        localStorage.removeItem(DRAFT_KEY);
+    } catch {
+        // yoksay
+    }
+}
+
+function persistDraft(splitType: string, exercises: ExerciseForm[]) {
+    try {
+        if (isDefaultForm(splitType, exercises)) {
+            localStorage.removeItem(DRAFT_KEY);
+        } else {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify({ splitType, exercises }));
+        }
+    } catch {
+        // Depolama dolu/erişilemez olabilir; taslak kaydı kritik değildir
+    }
+}
+
+/** Yalnızca tarayıcıda true döner; localStorage'a bağlı form SSR çıktısıyla uyuşmazlık yaratmasın diye. */
+const useIsClient = () =>
+    useSyncExternalStore(
+        () => () => {},
+        () => true,
+        () => false
+    );
+
+// --- Sayfa ---
 
 export default function NewWorkoutPage() {
-    // --- STATELER ---
+    const isClient = useIsClient();
 
-    // Veritabanından gelecek listeler
+    if (!isClient) {
+        return (
+            <div className="flex h-[60vh] items-center justify-center text-gray-400">
+                <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+        );
+    }
+
+    return <WorkoutForm />;
+}
+
+function WorkoutForm() {
+    // Taslak yalnızca ilk render'da bir kez okunur (bu bileşen sadece tarayıcıda mount edilir)
+    const [initialDraft] = useState(loadDraft);
+
+    const [splitType, setSplitType] = useState(initialDraft.splitType);
+    const [exercises, setExercises] = useState<ExerciseForm[]>(initialDraft.exercises);
+
+    // Veritabanından gelen listeler
     const [dbExercises, setDbExercises] = useState<{ _id: string; name: string }[]>([]);
-    const [routines, setRoutines] = useState<any[]>([]); // Rutinler için state
-    const [isLoadingExercises, setIsLoadingExercises] = useState(true);
-    const [isLoadingRoutines, setIsLoadingRoutines] = useState(true);
+    const [routines, setRoutines] = useState<RoutineTemplate[]>([]);
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [loadError, setLoadError] = useState(false);
 
-    // Form stateleri
-    const [splitType, setSplitType] = useState("Upper");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSavingRoutine, setIsSavingRoutine] = useState(false);
-    const [isLoaded, setIsLoaded] = useState(false);
 
-    // Dinamik Egzersiz ve Set State'i
-    const [exercises, setExercises] = useState<{
-        exerciseName: string;
-        sets: { weight: string; reps: string; }[];
-    }[]>([
-        {
-            exerciseName: "",
-            sets: [{ weight: "", reps: "" }],
-        },
-    ]);
-
-    // Sayfa ilk açıldığında LocalStorage'da yarım kalan antrenman var mı diye bak
+    // Taslağı her tuş vuruşunda değil, yazma durunca kaydet (debounce)
     useEffect(() => {
-        const savedDraft = localStorage.getItem("workoutDraft");
-        if (savedDraft) {
-            try {
-                const parsedDraft = JSON.parse(savedDraft);
-                setTimeout(() => {
-                    if (Array.isArray(parsedDraft)) {
-                        setExercises(parsedDraft);
-                    } else {
-                        setExercises(parsedDraft.exercises);
-                        if (parsedDraft.splitType) {
-                            setSplitType(parsedDraft.splitType);
-                        }
-                    }
-                    setIsLoaded(true);
-                }, 0);
-            } catch (e) {
-                console.error("Taslak okunamadı");
-                setIsLoaded(true);
-            }
-        } else {
-            setIsLoaded(true);
-        }
-    }, []);
+        const save = () => persistDraft(splitType, exercises);
+        const timer = setTimeout(save, DRAFT_DEBOUNCE_MS);
+        const flush = () => {
+            clearTimeout(timer);
+            save();
+        };
+        // Sekme kapanırken/arka plana alınırken bekleyen değişiklik kaybolmasın
+        window.addEventListener("pagehide", flush);
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener("pagehide", flush);
+        };
+    }, [splitType, exercises]);
 
-    // Egzersiz listesinde değişiklik oldukça taslağı kaydet
+    // Egzersiz ve rutin listelerini çek
     useEffect(() => {
-        if (!isLoaded) return;
+        const controller = new AbortController();
 
-        const isDefaultState = 
-            splitType === "Upper" &&
-            exercises.length === 1 && 
-            exercises[0].exerciseName === "" && 
-            exercises[0].sets.length === 1 &&
-            exercises[0].sets[0].weight === "" &&
-            exercises[0].sets[0].reps === "";
-
-        if (isDefaultState) {
-            localStorage.removeItem("workoutDraft");
-        } else {
-            localStorage.setItem("workoutDraft", JSON.stringify({ splitType, exercises }));
-        }
-    }, [exercises, splitType, isLoaded]);
-
-    // --- VERİ ÇEKME İŞLEMLERİ (Egzersizler ve Rutinler) ---
-    useEffect(() => {
         const fetchInitialData = async () => {
             try {
                 const [exRes, routRes] = await Promise.all([
-                    fetch("/api/exercises"),
-                    fetch("/api/routines")
+                    fetch("/api/exercises", { signal: controller.signal }),
+                    fetch("/api/routines", { signal: controller.signal }),
                 ]);
 
-                if (exRes.ok) {
-                    const exData = await exRes.json();
-                    setDbExercises(exData);
-                }
-                if (routRes.ok) {
-                    const routData = await routRes.json();
-                    setRoutines(routData);
-                }
+                if (exRes.ok) setDbExercises(await exRes.json());
+                if (routRes.ok) setRoutines(await routRes.json());
+                if (!exRes.ok || !routRes.ok) setLoadError(true);
             } catch (error) {
+                if ((error as Error).name === "AbortError") return;
                 console.error("Veriler çekilemedi", error);
+                setLoadError(true);
             } finally {
-                setIsLoadingExercises(false);
-                setIsLoadingRoutines(false);
+                if (!controller.signal.aborted) setIsLoadingData(false);
             }
         };
 
         fetchInitialData();
+        return () => controller.abort();
     }, []);
 
     // --- ŞABLON (ROUTINE) İŞLEMLERİ ---
-    
-    // Şablon Yükleme
-    const loadRoutine = (routine: any) => {
+
+    const loadRoutine = (routine: RoutineTemplate) => {
         const confirmLoad = window.confirm(`"${routine.routineName}" şablonunu yüklemek mevcut formu temizleyecektir. Onaylıyor musunuz?`);
         if (!confirmLoad) return;
 
         setSplitType(routine.splitType);
-        
-        // Şablondaki egzersizleri ve set sayılarını forma göre haritala (boş ağırlık ve tekrar ile)
-        const mappedExercises = routine.exercises.map((ex: any) => ({
-            exerciseName: ex.exerciseName,
-            sets: Array(ex.sets).fill({ weight: "", reps: "" })
-        }));
-        
-        setExercises(mappedExercises);
+        // Her set için ayrı nesne (aynı referansın tüm slotlara kopyalanması önlenir)
+        setExercises(
+            routine.exercises.map((ex) => ({
+                id: makeId(),
+                exerciseName: ex.exerciseName,
+                sets: Array.from({ length: ex.sets }, createSet),
+            }))
+        );
     };
 
-    // Şablon Olarak Kaydetme
     const saveAsRoutine = async () => {
-        const isFormEmpty = exercises.length === 1 && exercises[0].exerciseName === "";
-        if (isFormEmpty) {
+        const namedExercises = exercises.filter((ex) => ex.exerciseName.trim() !== "");
+        if (namedExercises.length === 0) {
             alert("Boş bir formu şablon olarak kaydedemezsiniz!");
             return;
         }
 
-        const routineName = window.prompt("Şablonunuz için bir isim girin (Örn: Push - Güç Günü):");
-        if (!routineName || routineName.trim() === "") return;
+        const routineName = window.prompt("Şablonunuz için bir isim girin (Örn: Push - Güç Günü):")?.trim();
+        if (!routineName) return;
 
         setIsSavingRoutine(true);
 
         try {
-            const payload = {
-                routineName,
-                splitType,
-                exercises: exercises
-                    .filter((ex) => ex.exerciseName !== "")
-                    .map((ex) => ({
-                        exerciseName: ex.exerciseName,
-                        sets: ex.sets.length // Sadece set sayısını alıyoruz
-                    }))
-            };
-
             const res = await fetch("/api/routines", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({
+                    routineName,
+                    splitType,
+                    exercises: namedExercises.map((ex) => ({
+                        exerciseName: ex.exerciseName.trim(),
+                        sets: ex.sets.length, // Sadece set sayısını alıyoruz
+                    })),
+                }),
             });
 
             if (res.ok) {
-                const newRoutine = await res.json();
-                setRoutines([newRoutine, ...routines]); // Listeye anında ekle
+                const newRoutine: RoutineTemplate = await res.json();
+                setRoutines((prev) => [newRoutine, ...prev]); // Listeye anında ekle
                 alert("Şablon başarıyla kaydedildi!");
             } else {
-                alert("Şablon kaydedilirken bir hata oluştu.");
+                const err = await res.json().catch(() => null);
+                alert(err?.error ?? "Şablon kaydedilirken bir hata oluştu.");
             }
         } catch (error) {
             console.error(error);
@@ -171,67 +250,59 @@ export default function NewWorkoutPage() {
         }
     };
 
+    // --- FORM İŞLEMLERİ (hepsi immutable, id tabanlı) ---
 
-    // --- HANDLER FONKSİYONLARI ---
-    const addExercise = () => {
-        setExercises([...exercises, { exerciseName: "", sets: [{ weight: "", reps: "" }] }]);
-    };
+    const addExercise = () => setExercises((prev) => [...prev, createExercise()]);
 
-    const removeExercise = (index: number) => {
-        const newExercises = exercises.filter((_, i) => i !== index);
-        if (newExercises.length === 0) {
-            setExercises([{ exerciseName: "", sets: [{ weight: "", reps: "" }] }]);
-        } else {
-            setExercises(newExercises);
-        }
-    };
+    const removeExercise = (exerciseId: string) =>
+        setExercises((prev) => {
+            const next = prev.filter((ex) => ex.id !== exerciseId);
+            return next.length === 0 ? [createExercise()] : next;
+        });
 
-    const addSet = (exerciseIndex: number) => {
-        const newExercises = [...exercises];
-        newExercises[exerciseIndex].sets.push({ weight: "", reps: "" });
-        setExercises(newExercises);
-    };
+    const updateExerciseName = (exerciseId: string, value: string) =>
+        setExercises((prev) => prev.map((ex) => (ex.id === exerciseId ? { ...ex, exerciseName: value } : ex)));
 
-    const removeSet = (exerciseIndex: number, setIndex: number) => {
-        const newExercises = [...exercises];
-        newExercises[exerciseIndex].sets = newExercises[exerciseIndex].sets.filter((_, i) => i !== setIndex);
-        setExercises(newExercises);
-    };
+    const addSet = (exerciseId: string) =>
+        setExercises((prev) => prev.map((ex) => (ex.id === exerciseId ? { ...ex, sets: [...ex.sets, createSet()] } : ex)));
 
-    const updateSet = (exerciseIndex: number, setIndex: number, field: "weight" | "reps", value: string) => {
-        const newExercises = [...exercises];
-        // Referans kopması olmaması için objeyi kopyalayarak güncelliyoruz
-        newExercises[exerciseIndex].sets[setIndex] = { 
-            ...newExercises[exerciseIndex].sets[setIndex], 
-            [field]: value 
-        };
-        setExercises(newExercises);
-    };
+    const removeSet = (exerciseId: string, setId: string) =>
+        setExercises((prev) =>
+            prev.map((ex) => (ex.id === exerciseId ? { ...ex, sets: ex.sets.filter((s) => s.id !== setId) } : ex))
+        );
 
-    const updateExerciseName = (exerciseIndex: number, value: string) => {
-        const newExercises = [...exercises];
-        newExercises[exerciseIndex].exerciseName = value;
-        setExercises(newExercises);
-    };
+    const updateSet = (exerciseId: string, setId: string, field: "weight" | "reps", value: string) =>
+        setExercises((prev) =>
+            prev.map((ex) =>
+                ex.id === exerciseId
+                    ? { ...ex, sets: ex.sets.map((s) => (s.id === setId ? { ...s, [field]: value } : s)) }
+                    : ex
+            )
+        );
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const payload = {
+            splitType,
+            exercises: exercises
+                .map((ex) => ({
+                    exerciseName: ex.exerciseName.trim(),
+                    sets: ex.sets
+                        .map((set) => ({ weight: Number(set.weight), reps: Number(set.reps) }))
+                        .filter((set) => set.weight > 0 && set.reps > 0), // Boş setleri engelle
+                }))
+                .filter((ex) => ex.exerciseName !== "" && ex.sets.length > 0),
+        };
+
+        if (payload.exercises.length === 0) {
+            alert("Kaydedilecek geçerli bir egzersiz/set bulunamadı.");
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
-            const payload = {
-                splitType,
-                exercises: exercises
-                    .map((ex) => ({
-                        exerciseName: ex.exerciseName,
-                        sets: ex.sets.map((set) => ({
-                            weight: Number(set.weight),
-                            reps: Number(set.reps),
-                        })).filter(set => set.weight > 0 && set.reps > 0), // Boş setleri engelle
-                    }))
-                    .filter((ex) => ex.exerciseName !== "" && ex.sets.length > 0), 
-            };
-
             const res = await fetch("/api/workouts", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -240,14 +311,17 @@ export default function NewWorkoutPage() {
 
             if (res.ok) {
                 alert("Antrenman başarıyla kaydedildi!");
-                localStorage.removeItem("workoutDraft");
-                setExercises([{ exerciseName: "", sets: [{ weight: "", reps: "" }] }]);
+                // Taslağı hemen sil (debounce beklenmesin), sonra formu sıfırla
+                clearDraft();
+                setExercises([createExercise()]);
                 setSplitType("Upper");
             } else {
-                alert("Kaydedilirken bir hata oluştu.");
+                const err = await res.json().catch(() => null);
+                alert(err?.error ?? "Kaydedilirken bir hata oluştu.");
             }
         } catch (error) {
             console.error(error);
+            alert("Sunucuya bağlanılamadı.");
         } finally {
             setIsSubmitting(false);
         }
@@ -269,12 +343,14 @@ export default function NewWorkoutPage() {
                     <LibraryBig className="w-5 h-5 text-indigo-500" />
                     <h2>Şablonlarım</h2>
                 </div>
-                
-                {isLoadingRoutines ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-500"><Loader2 className="w-4 h-4 animate-spin"/> Yükleniyor...</div>
+
+                {isLoadingData ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Yükleniyor...
+                    </div>
                 ) : routines.length === 0 ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50">
-                        Henüz kaydedilmiş bir şablonunuz yok. Antrenman formunu doldurup "Şablon Olarak Kaydet" butonunu kullanabilirsiniz.
+                        Henüz kaydedilmiş bir şablonunuz yok. Antrenman formunu doldurup &quot;Şablon Yap&quot; butonunu kullanabilirsiniz.
                     </p>
                 ) : (
                     <div className="flex overflow-x-auto pb-2 gap-3 custom-scrollbar">
@@ -288,10 +364,16 @@ export default function NewWorkoutPage() {
                                 <span className="text-sm font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                                     {routine.routineName}
                                 </span>
-                                <span className="text-xs text-gray-500 mt-1">{routine.splitType} • {routine.exercises.length} Hareket</span>
+                                <span className="text-xs text-gray-500 mt-1">
+                                    {routine.splitType} • {routine.exercises.length} Hareket
+                                </span>
                             </button>
                         ))}
                     </div>
+                )}
+
+                {loadError && !isLoadingData && (
+                    <p className="mt-2 text-sm text-red-500">Şablonlar veya egzersiz listesi yüklenemedi. Sayfayı yenilemeyi deneyin.</p>
                 )}
             </div>
 
@@ -316,100 +398,29 @@ export default function NewWorkoutPage() {
                     </div>
                 </div>
 
+                {/* Tüm egzersiz girişleri aynı öneri listesini paylaşır */}
+                <datalist id="exercise-suggestions">
+                    {dbExercises.map((dbEx) => (
+                        <option key={dbEx._id} value={dbEx.name} />
+                    ))}
+                </datalist>
+
                 {/* Egzersiz Listesi */}
-                {exercises.map((exercise, exerciseIndex) => (
-                    <div key={exerciseIndex} className="bg-white dark:bg-gray-800 p-4 md:p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="w-full relative">
-                                <input
-                                    type="text"
-                                    list={`exercise-suggestions-${exerciseIndex}`}
-                                    value={exercise.exerciseName || ""}
-                                    onChange={(e) => updateExerciseName(exerciseIndex, e.target.value)}
-                                    placeholder={isLoadingExercises ? "Yükleniyor..." : "Egzersiz seçin veya yazın..."}
-                                    className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3 outline-none font-semibold transition-all"
-                                    required
-                                />
-                                <datalist id={`exercise-suggestions-${exerciseIndex}`}>
-                                    {dbExercises.map((dbEx) => (
-                                        <option key={dbEx._id} value={dbEx.name} />
-                                    ))}
-                                </datalist>
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={() => removeExercise(exerciseIndex)}
-                                className="ml-3 p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        {/* Setler */}
-                        <div className="space-y-2">
-                            <div className="grid grid-cols-12 gap-2 text-xs font-bold text-gray-400 text-center px-1 mb-1">
-                                <div className="col-span-2">SET</div>
-                                <div className="col-span-4">KG</div>
-                                <div className="col-span-4">TEKRAR</div>
-                                <div className="col-span-2"></div>
-                            </div>
-
-                            {exercise.sets.map((set, setIndex) => (
-                                <div key={setIndex} className="grid grid-cols-12 gap-2 items-center group">
-                                    <div className="col-span-2 text-center text-sm font-bold text-gray-400 group-hover:text-blue-500 transition-colors">
-                                        {setIndex + 1}
-                                    </div>
-                                    <div className="col-span-4">
-                                        <input
-                                            type="number"
-                                            value={set.weight}
-                                            onChange={(e) => updateSet(exerciseIndex, setIndex, "weight", e.target.value)}
-                                            placeholder="0"
-                                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-center text-gray-900 dark:text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                                            required
-                                            min="0"
-                                            step="0.5"
-                                        />
-                                    </div>
-                                    <div className="col-span-4">
-                                        <input
-                                            type="number"
-                                            value={set.reps}
-                                            onChange={(e) => updateSet(exerciseIndex, setIndex, "reps", e.target.value)}
-                                            placeholder="0"
-                                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-center text-gray-900 dark:text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
-                                            required
-                                            min="1"
-                                        />
-                                    </div>
-                                    <div className="col-span-2 flex justify-center">
-                                        <button
-                                            type="button"
-                                            onClick={() => removeSet(exerciseIndex, setIndex)}
-                                            className="p-2 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-20"
-                                            disabled={exercise.sets.length === 1}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => addSet(exerciseIndex)}
-                            className="mt-4 w-full py-2.5 border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-xl font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <Plus className="w-4 h-4" /> Yeni Set
-                        </button>
-                    </div>
+                {exercises.map((exercise) => (
+                    <ExerciseCard
+                        key={exercise.id}
+                        exercise={exercise}
+                        isLoadingExercises={isLoadingData}
+                        onNameChange={updateExerciseName}
+                        onRemove={removeExercise}
+                        onAddSet={addSet}
+                        onRemoveSet={removeSet}
+                        onUpdateSet={updateSet}
+                    />
                 ))}
 
                 {/* Aksiyon Butonları Alanı */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                    
                     {/* Egzersiz Ekle */}
                     <button
                         type="button"
@@ -418,7 +429,7 @@ export default function NewWorkoutPage() {
                     >
                         <Plus className="w-5 h-5" /> Egzersiz
                     </button>
-                    
+
                     {/* Şablon Olarak Kaydet */}
                     <button
                         type="button"
@@ -437,13 +448,119 @@ export default function NewWorkoutPage() {
                         className="w-full sm:flex-[2] py-3.5 bg-blue-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors disabled:opacity-70 shadow-md shadow-blue-500/20"
                     >
                         {isSubmitting ? (
-                            <><Loader2 className="w-5 h-5 animate-spin" /> Kaydediliyor...</>
+                            <>
+                                <Loader2 className="w-5 h-5 animate-spin" /> Kaydediliyor...
+                            </>
                         ) : (
-                            <><Save className="w-5 h-5" /> Antrenmanı Bitir</>
+                            <>
+                                <Save className="w-5 h-5" /> Antrenmanı Bitir
+                            </>
                         )}
                     </button>
                 </div>
             </form>
+        </div>
+    );
+}
+
+// --- Egzersiz kartı: yalnızca kendi verisi değişince yeniden render olur ---
+
+interface ExerciseCardProps {
+    exercise: ExerciseForm;
+    isLoadingExercises: boolean;
+    onNameChange: (exerciseId: string, value: string) => void;
+    onRemove: (exerciseId: string) => void;
+    onAddSet: (exerciseId: string) => void;
+    onRemoveSet: (exerciseId: string, setId: string) => void;
+    onUpdateSet: (exerciseId: string, setId: string, field: "weight" | "reps", value: string) => void;
+}
+
+function ExerciseCard({ exercise, isLoadingExercises, onNameChange, onRemove, onAddSet, onRemoveSet, onUpdateSet }: ExerciseCardProps) {
+    return (
+        <div className="bg-white dark:bg-gray-800 p-4 md:p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+                <div className="w-full relative">
+                    <input
+                        type="text"
+                        list="exercise-suggestions"
+                        value={exercise.exerciseName}
+                        onChange={(e) => onNameChange(exercise.id, e.target.value)}
+                        placeholder={isLoadingExercises ? "Yükleniyor..." : "Egzersiz seçin veya yazın..."}
+                        maxLength={80}
+                        className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3 outline-none font-semibold transition-all"
+                        required
+                    />
+                </div>
+
+                <button
+                    type="button"
+                    onClick={() => onRemove(exercise.id)}
+                    className="ml-3 p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                    aria-label="Egzersizi sil"
+                >
+                    <Trash2 className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Setler */}
+            <div className="space-y-2">
+                <div className="grid grid-cols-12 gap-2 text-xs font-bold text-gray-400 text-center px-1 mb-1">
+                    <div className="col-span-2">SET</div>
+                    <div className="col-span-4">KG</div>
+                    <div className="col-span-4">TEKRAR</div>
+                    <div className="col-span-2"></div>
+                </div>
+
+                {exercise.sets.map((set, setIndex) => (
+                    <div key={set.id} className="grid grid-cols-12 gap-2 items-center group">
+                        <div className="col-span-2 text-center text-sm font-bold text-gray-400 group-hover:text-blue-500 transition-colors">
+                            {setIndex + 1}
+                        </div>
+                        <div className="col-span-4">
+                            <input
+                                type="number"
+                                value={set.weight}
+                                onChange={(e) => onUpdateSet(exercise.id, set.id, "weight", e.target.value)}
+                                placeholder="0"
+                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-center text-gray-900 dark:text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                                required
+                                min="0"
+                                step="0.5"
+                            />
+                        </div>
+                        <div className="col-span-4">
+                            <input
+                                type="number"
+                                value={set.reps}
+                                onChange={(e) => onUpdateSet(exercise.id, set.id, "reps", e.target.value)}
+                                placeholder="0"
+                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-center text-gray-900 dark:text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                                required
+                                min="1"
+                            />
+                        </div>
+                        <div className="col-span-2 flex justify-center">
+                            <button
+                                type="button"
+                                onClick={() => onRemoveSet(exercise.id, set.id)}
+                                className="p-2 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-20"
+                                disabled={exercise.sets.length === 1}
+                                aria-label="Seti sil"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <button
+                type="button"
+                onClick={() => onAddSet(exercise.id)}
+                className="mt-4 w-full py-2.5 border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-xl font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+            >
+                <Plus className="w-4 h-4" /> Yeni Set
+            </button>
         </div>
     );
 }
