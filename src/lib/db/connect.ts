@@ -1,13 +1,5 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-    throw new Error(
-        "Lütfen .env.local dosyanızda MONGODB_URI ortam değişkenini tanımlayın."
-    );
-}
-
 // TypeScript'te global objeyi genişleterek mongoose önbelleğini tanımlıyoruz
 interface MongooseCache {
     conn: typeof mongoose | null;
@@ -15,7 +7,6 @@ interface MongooseCache {
 }
 
 declare global {
-    // eslint-disable-next-line no-var
     var mongooseCache: MongooseCache;
 }
 
@@ -32,13 +23,20 @@ export async function connectToDatabase() {
         return cached.conn;
     }
 
+    // Kontrol modül yüklenirken değil, bağlantı istendiğinde yapılır;
+    // böylece ortam değişkeni olmayan ortamlarda (örn. build) import hatası oluşmaz.
+    const MONGODB_URI = process.env.MONGODB_URI;
+    if (!MONGODB_URI) {
+        throw new Error("Lütfen .env.local dosyanızda MONGODB_URI ortam değişkenini tanımlayın.");
+    }
+
     // Eğer devam eden bir bağlantı isteği yoksa yeni bir tane başlat
     if (!cached.promise) {
         const opts = {
             bufferCommands: false, // Bekleyen işlemleri kapat, hızlı hata fırlatsın
         };
 
-        cached.promise = mongoose.connect(MONGODB_URI as string, opts).then((mongooseInstance) => {
+        cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
             return mongooseInstance;
         });
     }
