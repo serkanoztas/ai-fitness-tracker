@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Bot, X, Sparkles, Activity, Flame, Check, ChevronRight } from "lucide-react";
+import { apiRequest, getErrorMessage } from "@/lib/api/client";
+import type { MacroResultDTO } from "@/types/api";
 
 const ACTIVITY_LEVELS = [
     { id: "sedanter", label: "Sedanter (Çok az/hiç egzersiz)" },
@@ -23,7 +26,7 @@ const GOALS = [
 export default function AIMacroAssistant() {
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [result, setResult] = useState<any>(null);
+    const [result, setResult] = useState<MacroResultDTO | null>(null);
 
     const [formData, setFormData] = useState({
         age: "",
@@ -39,55 +42,46 @@ export default function AIMacroAssistant() {
         setIsLoading(true);
 
         try {
-            const res = await fetch("/api/ai/macro", {
+            const data = await apiRequest<MacroResultDTO>("/api/ai/macro", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+                body: {
                     age: Number(formData.age),
                     weight: Number(formData.weight),
                     height: Number(formData.height),
                     gender: formData.gender,
                     activityLevel: ACTIVITY_LEVELS.find(a => a.id === formData.activityLevel)?.label,
                     goal: GOALS.find(g => g.id === formData.goal)?.label,
-                }),
+                },
             });
-
-            if (res.ok) {
-                const data = await res.json();
-                setResult(data);
-            } else {
-                alert("Hesaplama sırasında bir hata oluştu.");
-            }
-        } catch (error) {
-            console.error(error);
+            setResult(data);
+        } catch (err) {
+            toast.error(getErrorMessage(err, "Hesaplama sırasında bir hata oluştu."));
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleSaveGoal = async () => {
+        if (!result) return;
+
         try {
-            const res = await fetch("/api/user/goal", {
+            await apiRequest("/api/user/goal", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+                body: {
                     calories: result.calories,
                     protein: result.protein,
                     carbs: result.carbs,
                     fat: result.fat,
-                })
+                },
             });
 
-            if (res.ok) {
-                alert("Hedefiniz başarıyla güncellendi!");
-                setIsOpen(false);
-                setResult(null);
-                // Beslenme sayfasında anında yansıması için sayfayı yeniliyoruz
-                window.location.reload();
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Kaydedilirken hata oluştu.");
+            toast.success("Hedefiniz başarıyla güncellendi!");
+            setIsOpen(false);
+            setResult(null);
+            // Beslenme sayfası (açıksa) hedefleri yeniden çeksin
+            window.dispatchEvent(new Event("dailyGoalsUpdated"));
+        } catch (err) {
+            toast.error(getErrorMessage(err, "Kaydedilirken hata oluştu."));
         }
     };
 
@@ -202,7 +196,7 @@ export default function AIMacroAssistant() {
                                 <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 relative">
                                     <Sparkles className="w-4 h-4 text-indigo-500 absolute top-4 right-4" />
                                     <h4 className="text-xs font-bold text-gray-900 dark:text-white mb-2">Yapay Zeka Koçunun Tavsiyesi</h4>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 italic">"{result.ai_advice}"</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 italic">&quot;{result.ai_advice}&quot;</p>
                                 </div>
 
                                 <button

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { toast } from "sonner";
 import { Plus, Trash2, Save, Dumbbell, BookmarkPlus, LibraryBig, Loader2 } from "lucide-react";
 
 const SPLIT_TYPES = ["Upper", "Lower", "Push", "Pull", "Legs", "FullBody", "Other", "Arms"];
@@ -211,7 +212,7 @@ function WorkoutForm() {
     const saveAsRoutine = async () => {
         const namedExercises = exercises.filter((ex) => ex.exerciseName.trim() !== "");
         if (namedExercises.length === 0) {
-            alert("Boş bir formu şablon olarak kaydedemezsiniz!");
+            toast.error("Boş bir formu şablon olarak kaydedemezsiniz!");
             return;
         }
 
@@ -237,14 +238,14 @@ function WorkoutForm() {
             if (res.ok) {
                 const newRoutine: RoutineTemplate = await res.json();
                 setRoutines((prev) => [newRoutine, ...prev]); // Listeye anında ekle
-                alert("Şablon başarıyla kaydedildi!");
+                toast.success("Şablon başarıyla kaydedildi!");
             } else {
                 const err = await res.json().catch(() => null);
-                alert(err?.error ?? "Şablon kaydedilirken bir hata oluştu.");
+                toast.error(err?.error ?? "Şablon kaydedilirken bir hata oluştu.");
             }
         } catch (error) {
             console.error(error);
-            alert("Sunucuya bağlanılamadı.");
+            toast.error("Sunucuya bağlanılamadı.");
         } finally {
             setIsSavingRoutine(false);
         }
@@ -296,7 +297,7 @@ function WorkoutForm() {
         };
 
         if (payload.exercises.length === 0) {
-            alert("Kaydedilecek geçerli bir egzersiz/set bulunamadı.");
+            toast.error("Kaydedilecek geçerli bir egzersiz/set bulunamadı.");
             return;
         }
 
@@ -310,18 +311,18 @@ function WorkoutForm() {
             });
 
             if (res.ok) {
-                alert("Antrenman başarıyla kaydedildi!");
+                toast.success("Antrenman başarıyla kaydedildi!");
                 // Taslağı hemen sil (debounce beklenmesin), sonra formu sıfırla
                 clearDraft();
                 setExercises([createExercise()]);
                 setSplitType("Upper");
             } else {
                 const err = await res.json().catch(() => null);
-                alert(err?.error ?? "Kaydedilirken bir hata oluştu.");
+                toast.error(err?.error ?? "Kaydedilirken bir hata oluştu.");
             }
         } catch (error) {
             console.error(error);
-            alert("Sunucuya bağlanılamadı.");
+            toast.error("Sunucuya bağlanılamadı.");
         } finally {
             setIsSubmitting(false);
         }

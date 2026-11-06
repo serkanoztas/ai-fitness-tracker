@@ -1,64 +1,54 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import { Camera, User, Save, Loader2, ImagePlus } from "lucide-react";
+import { apiRequest, getErrorMessage } from "@/lib/api/client";
+import { useProfileImage } from "@/hooks/useProfileImage";
+
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB
 
 export default function ProfilePage() {
     const { data: session, update } = useSession();
-    
-    const [name, setName] = useState("");
-    const [image, setImage] = useState<string | null>(null);
-    
+
+    // Kullanıcı düzenleme yapana kadar (null) oturumdan/yerel depodan gelen değerler gösterilir.
+    // Böylece session yüklenince state'i effect ile senkronlamaya gerek kalmaz.
+    const [nameInput, setNameInput] = useState<string | null>(null);
+    const [imageInput, setImageInput] = useState<string | null>(null);
+    const storedImage = useProfileImage();
+    const name = nameInput ?? session?.user?.name ?? "";
+    const image = imageInput ?? storedImage;
+
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [message, setMessage] = useState({ type: "", text: "" });
-    
+
     // Gizli dosya seçiciyi tetiklemek için referans
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Oturum ve LocalStorage verisi geldiğinde stateleri doldur
-    useEffect(() => {
-        if (session?.user) {
-            setName(session.user.name || "");
-        }
-        
-        // YENİ: LocalStorage'da kayıtlı bir profil resmi varsa onu öncelikli al
-        const storedImg = localStorage.getItem("userProfileImage");
-        if (storedImg) {
-            setImage(storedImg);
-        } else if (session?.user?.image) {
-            setImage(session.user.image);
-        }
-    }, [session]);
-
     // Dosyayı Base64 stringine çeviren yardımcı fonksiyon
-    const convertToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
+    const convertToBase64 = (file: File): Promise<string> =>
+        new Promise((resolve, reject) => {
             const fileReader = new FileReader();
             fileReader.readAsDataURL(file);
             fileReader.onload = () => resolve(fileReader.result as string);
-            fileReader.onerror = (error) => reject(error);
+            fileReader.onerror = () => reject(fileReader.error);
         });
-    };
 
     // Resim seçildiğinde çalışacak fonksiyon
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Dosya boyutu kontrolü (Maksimum 2MB)
-        if (file.size > 2 * 1024 * 1024) {
-            setMessage({ type: "error", text: "Fotoğraf boyutu 2MB'dan küçük olmalıdır." });
+        if (file.size > MAX_IMAGE_BYTES) {
+            toast.error("Fotoğraf boyutu 2MB'dan küçük olmalıdır.");
             return;
         }
 
         try {
-            const base64 = await convertToBase64(file);
-            setImage(base64);
-            setMessage({ type: "", text: "" }); 
+            setImageInput(await convertToBase64(file));
         } catch (error) {
             console.error("Resim dönüştürme hatası", error);
-            setMessage({ type: "error", text: "Resim işlenirken bir hata oluştu." });
+            toast.error("Resim işlenirken bir hata oluştu.");
         }
     };
 
@@ -66,31 +56,24 @@ export default function ProfilePage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        setMessage({ type: "", text: "" });
 
         try {
-            const res = await fetch("/api/user/profile", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, image }),
-            });
+            await apiRequest("/api/user/profile", { method: "PATCH", body: { name, image } });
+            toast.success("Profil başarıyla güncellendi!");
 
-            if (res.ok) {
-                setMessage({ type: "success", text: "Profil başarıyla güncellendi!" });
-                
-                await update({ name: name });
-                
-                if (image) {
+            await update({ name });
+
+            if (image) {
+                try {
                     localStorage.setItem("userProfileImage", image);
                     // Layout ve diğer bileşenlerin haberdar olması için event fırlatıyoruz
                     window.dispatchEvent(new Event("profileImageUpdated"));
+                } catch {
+                    toast.warning("Resim kaydedildi ancak bu cihazda önbelleğe alınamadı.");
                 }
-            } else {
-                const errorData = await res.json();
-                setMessage({ type: "error", text: errorData.error || "Güncellenirken bir hata oluştu." });
             }
-        } catch (error) {
-            setMessage({ type: "error", text: "Sunucuya bağlanılamadı." });
+        } catch (err) {
+            toast.error(getErrorMessage(err, "Güncellenirken bir hata oluştu."));
         } finally {
             setIsSubmitting(false);
         }
@@ -160,20 +143,13 @@ export default function ProfilePage() {
                             <input
                                 type="text"
                                 value={name}
-                                onChange={(e) => setName(e.target.value)}
+                                onChange={(e) => setNameInput(e.target.value)}
                                 className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-3.5 outline-none transition-all"
                                 placeholder="Adınız Soyadınız"
                                 required
                             />
                         </div>
                     </div>
-
-                    {/* Hata/Başarı Mesajları */}
-                    {message.text && (
-                        <div className={`p-4 rounded-xl text-sm font-medium ${message.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-                            {message.text}
-                        </div>
-                    )}
 
                     {/* Kaydet Butonu */}
                     <button

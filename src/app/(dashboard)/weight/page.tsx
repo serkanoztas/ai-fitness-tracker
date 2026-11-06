@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Scale, Save, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import {
     LineChart,
@@ -11,31 +12,14 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from "recharts";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { apiRequest, getErrorMessage } from "@/lib/api/client";
+import type { WeightLogDTO } from "@/types/api";
 
 export default function WeightPage() {
-    const [weightLogs, setWeightLogs] = useState<any[]>([]);
+    const { data: weightLogs, setData: setWeightLogs, isLoading, error } = useApiQuery<WeightLogDTO[]>("/api/weight", []);
     const [newWeight, setNewWeight] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-
-    // Veritabanından geçmiş kilo verilerini çek
-    useEffect(() => {
-        fetchWeightLogs();
-    }, []);
-
-    const fetchWeightLogs = async () => {
-        try {
-            const res = await fetch("/api/weight");
-            if (res.ok) {
-                const data = await res.json();
-                setWeightLogs(data);
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,19 +27,12 @@ export default function WeightPage() {
         setIsSubmitting(true);
 
         try {
-            const res = await fetch("/api/weight", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ weight: newWeight }),
-            });
-
-            if (res.ok) {
-                const updatedLogs = await res.json();
-                setWeightLogs(updatedLogs);
-                setNewWeight(""); // Formu temizle
-            }
-        } catch (error) {
-            console.error("Kayıt hatası:", error);
+            const updatedLogs = await apiRequest<WeightLogDTO[]>("/api/weight", { method: "POST", body: { weight: newWeight } });
+            setWeightLogs(updatedLogs);
+            setNewWeight("");
+            toast.success("Kilo kaydedildi.");
+        } catch (err) {
+            toast.error(getErrorMessage(err, "Kilo kaydedilemedi."));
         } finally {
             setIsSubmitting(false);
         }
@@ -88,6 +65,8 @@ export default function WeightPage() {
                     <p className="text-gray-500 text-sm">Gelişimini yakından izle.</p>
                 </div>
             </div>
+
+            {error && <p className="text-sm text-red-500">{error}</p>}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 

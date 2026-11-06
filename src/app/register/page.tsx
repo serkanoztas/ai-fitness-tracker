@@ -31,8 +31,8 @@ export default function RegisterPage() {
 
             // Kayıt başarılıysa login sayfasına yönlendir
             router.push("/login?registered=true");
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Bir hata oluştu.");
         } finally {
             setIsLoading(false);
         }

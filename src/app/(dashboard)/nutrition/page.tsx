@@ -1,48 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Flame, Save, Activity, Droplet, Wheat, Utensils, Trash, TrendingUp } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { apiRequest, getErrorMessage } from "@/lib/api/client";
+import type { DailyGoalsDTO, NutritionLogDTO } from "@/types/api";
 
-
+const EMPTY_FORM = { calories: "", protein: "", carbs: "", fat: "" };
 
 export default function NutritionPage() {
-    const [logs, setLogs] = useState<any[]>([]);
-    const [formData, setFormData] = useState({ calories: "", protein: "", carbs: "", fat: "" });
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-    const [goals, setGoals] = useState<any>(null);
+    const { data: logs, setData: setLogs, isLoading, error } = useApiQuery<NutritionLogDTO[]>("/api/nutrition", []);
+    const { data: goalsData, refetch: refetchGoals } = useApiQuery<DailyGoalsDTO | null>("/api/user/goal", null);
 
+    // AI Makro Koçu yeni hedef kaydedince hedefleri yeniden çek
     useEffect(() => {
-        fetchLogs();
-        fetchGoals();
-    }, []);
+        window.addEventListener("dailyGoalsUpdated", refetchGoals);
+        return () => window.removeEventListener("dailyGoalsUpdated", refetchGoals);
+    }, [refetchGoals]);
 
-    const fetchGoals = async () => {
-        try {
-            const res = await fetch("/api/user/goal");
-            if (res.ok) {
-                const data = await res.json();
-                if (data && data.calories) setGoals(data);
-            }
-        } catch (error) {
-            console.error("Hedefler çekilemedi", error);
-        }
-    };
+    // Hedef henüz belirlenmemişse (kalori yoksa) hedef gösterimi kapalı kalır
+    const goals = goalsData?.calories ? goalsData : null;
 
-    const fetchLogs = async () => {
-        try {
-            const res = await fetch("/api/nutrition");
-            if (res.ok) {
-                const data = await res.json();
-                setLogs(data);
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const [formData, setFormData] = useState(EMPTY_FORM);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,19 +32,12 @@ export default function NutritionPage() {
         setIsSubmitting(true);
 
         try {
-            const res = await fetch("/api/nutrition", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
-            });
-
-            if (res.ok) {
-                const updatedLogs = await res.json();
-                setLogs(updatedLogs);
-                setFormData({ calories: "", protein: "", carbs: "", fat: "" }); // Formu temizle
-            }
-        } catch (error) {
-            console.error("Kayıt hatası:", error);
+            const updatedLogs = await apiRequest<NutritionLogDTO[]>("/api/nutrition", { method: "POST", body: formData });
+            setLogs(updatedLogs);
+            setFormData(EMPTY_FORM);
+            toast.success("Beslenme kaydı eklendi.");
+        } catch (err) {
+            toast.error(getErrorMessage(err, "Kayıt eklenemedi."));
         } finally {
             setIsSubmitting(false);
         }
@@ -70,19 +45,15 @@ export default function NutritionPage() {
 
     const handleDelete = async (id: string) => {
         if (!window.confirm("Bu beslenme kaydını silmek istediğinden emin misin?")) return;
-        try {
-            const res = await fetch(`/api/nutrition?id=${id}`, {
-                method: "DELETE",
-            });
 
-            if (res.ok) {
-                setLogs((prev) => prev.filter((l) => l._id !== id));
-            }
+        try {
+            const updatedLogs = await apiRequest<NutritionLogDTO[]>(`/api/nutrition?id=${id}`, { method: "DELETE" });
+            setLogs(updatedLogs);
+            toast.success("Kayıt silindi.");
+        } catch (err) {
+            toast.error(getErrorMessage(err, "Kayıt silinemedi."));
         }
-        catch (error) {
-            console.error("Beslenme kaydı silinemedi", error);
-        }
-    }
+    };
 
 
     // Son girilen kaydı bul (Grafik için)
@@ -101,7 +72,7 @@ export default function NutritionPage() {
     // YENİ: GEÇMİŞ GRAFİĞİ İÇİN VERİ HAZIRLIĞI (Son 7 Kayıt)
     const historyData = logs.slice(-7).map((log) => {
         // Mongo'dan gelen tarihi daha okunaklı yap (Örn: "29 Eyl")
-        const dateObj = new Date(log.createdAt || log.date || new Date());
+        const dateObj = new Date(log.date);
         return {
             tarih: new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short" }).format(dateObj),
             kalori: log.calories,
@@ -121,6 +92,8 @@ export default function NutritionPage() {
                     <p className="text-gray-500 text-sm">Günlük kalori ve makro dağılımını izle.</p>
                 </div>
             </div>
+
+            {error && <p className="text-sm text-red-500">{error}</p>}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 

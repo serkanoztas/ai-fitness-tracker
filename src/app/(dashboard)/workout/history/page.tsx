@@ -1,69 +1,41 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { CalendarDays, Trophy, Dumbbell, Activity, Search, History, Trash, Edit2, X } from "lucide-react";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { apiRequest, getErrorMessage } from "@/lib/api/client";
+import type { WorkoutSplit } from "@/types";
+import type { WorkoutDTO, WorkoutExerciseDTO } from "@/types/api";
 
 const SPLIT_TYPES = ["Upper", "Lower", "Push", "Pull", "Legs", "FullBody", "Arms", "Other"];
 
 export default function HistoryPage() {
-    const [workouts, setWorkouts] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { data: workouts, setData: setWorkouts, isLoading, error } = useApiQuery<WorkoutDTO[]>("/api/workouts", []);
     const [searchTerm, setSearchTerm] = useState("");
-
     const [editingId, setEditingId] = useState<string | null>(null);
-
-    useEffect(() => {
-        const fetchHistory = async () => {
-            try {
-                const res = await fetch("/api/workouts");
-                if (res.ok) {
-                    const data = await res.json();
-                    setWorkouts(data);
-                }
-            } catch (error) {
-                console.error("Geçmiş çekilemedi", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchHistory();
-    }, []);
 
     const handleDelete = async (id: string) => {
         if (!window.confirm("Bu antrenmanı silmek istediğinden emin misin?")) return;
 
         try {
-            const res = await fetch(`/api/workouts?id=${id}`, {
-                method: "DELETE",
-            });
-
-            if (res.ok) {
-                setWorkouts((prev) => prev.filter((w) => w._id !== id));
-            }
+            await apiRequest(`/api/workouts?id=${id}`, { method: "DELETE" });
+            setWorkouts((prev) => prev.filter((w) => w._id !== id));
+            toast.success("Antrenman silindi.");
+        } catch (err) {
+            toast.error(getErrorMessage(err, "Antrenman silinemedi."));
         }
-        catch (error) {
-            console.error("Antrenman silinemedi", error);
-        }
-    }
+    };
 
     // Split Tipini (Bölgeyi) Güncelleyen Fonksiyon
-    const handleUpdateSplit = async (id: string, newSplit: string) => {
+    const handleUpdateSplit = async (id: string, newSplit: WorkoutSplit) => {
         try {
-            const res = await fetch("/api/workouts", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ workoutId: id, splitType: newSplit })
-            });
-
-            if (res.ok) {
-                setWorkouts((prev) => prev.map((w) => w._id === id ? { ...w, splitType: newSplit } : w));
-                setEditingId(null);
-            } else {
-                alert("Güncellenirken bir hata oluştu.");
-            }
-        } catch (error) {
-            console.error("Güncelleme hatası:", error);
+            await apiRequest(`/api/workouts`, { method: "PATCH", body: { workoutId: id, splitType: newSplit } });
+            setWorkouts((prev) => prev.map((w) => (w._id === id ? { ...w, splitType: newSplit } : w)));
+            setEditingId(null);
+            toast.success("Antrenman tipi güncellendi.");
+        } catch (err) {
+            toast.error(getErrorMessage(err, "Güncellenirken bir hata oluştu."));
         }
     };
 
@@ -74,15 +46,8 @@ export default function HistoryPage() {
         }).format(date);
     };
 
-    const calculateTotalPRs = (exercises: any[]) => {
-        let prCount = 0;
-        exercises.forEach((ex) => {
-            ex.sets.forEach((set: any) => {
-                if (set.isPR) prCount++;
-            });
-        });
-        return prCount;
-    };
+    const calculateTotalPRs = (exercises: WorkoutExerciseDTO[]) =>
+        exercises.reduce((count, ex) => count + ex.sets.filter((set) => set.isPR).length, 0);
 
     const filteredWorkouts = workouts.filter((w) =>
         w.splitType.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -121,6 +86,8 @@ export default function HistoryPage() {
                 </div>
             </div>
 
+            {error && <p className="text-sm text-red-500">{error}</p>}
+
             {filteredWorkouts.length === 0 ? (
                 <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700">
                     <p className="text-gray-500 dark:text-gray-400">Kayıtlı antrenman bulunamadı.</p>
@@ -144,7 +111,7 @@ export default function HistoryPage() {
                                                     <select
                                                         className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-1.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500"
                                                         defaultValue={workout.splitType}
-                                                        onChange={(e) => handleUpdateSplit(workout._id, e.target.value)}
+                                                        onChange={(e) => handleUpdateSplit(workout._id, e.target.value as WorkoutSplit)}
                                                     >
                                                         {SPLIT_TYPES.map(type => (
                                                             <option key={type} value={type}>{type}</option>
@@ -213,14 +180,14 @@ export default function HistoryPage() {
                                 {/* Alt Kısım Detayları (Aynı Bırakıldı) */}
                                 <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {workout.exercises.map((ex: any, exIndex: number) => (
+                                        {workout.exercises.map((ex, exIndex) => (
                                             <div key={exIndex} className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
                                                 <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-200 dark:border-gray-700/50">
                                                     <span className="font-bold text-gray-900 dark:text-white text-sm">{ex.exercise?.name || "Bilinmeyen Egzersiz"}</span>
                                                     <span className="text-xs text-gray-500 font-medium">{ex.exerciseVolume} kg</span>
                                                 </div>
                                                 <div className="space-y-1.5">
-                                                    {ex.sets.map((set: any, setIndex: number) => (
+                                                    {ex.sets.map((set, setIndex) => (
                                                         <div key={setIndex} className={`flex justify-between items-center text-xs p-1.5 rounded-md px-2 ${set.isPR ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-900 dark:text-yellow-400 font-bold" : "text-gray-600 dark:text-gray-400"}`}>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="opacity-70">Set {setIndex + 1}</span>
