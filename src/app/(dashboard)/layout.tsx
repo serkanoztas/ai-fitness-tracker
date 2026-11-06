@@ -1,54 +1,13 @@
-"use client";
-import { useState, useEffect } from "react";
-import { useSession, signOut } from "next-auth/react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, Dumbbell, History, Scale, LogOut, Utensils } from "lucide-react";
+import { Dumbbell } from "lucide-react";
 import AIMacroAssistant from "@/components/AIMacroAssistant";
+import { SidebarNav } from "@/components/layout/SidebarNav";
+import { SidebarUser } from "@/components/layout/SidebarUser";
+import { MobileNav } from "@/components/layout/MobileNav";
 
-const NAV_ITEMS = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Antrenman", href: "/workout/new", icon: Dumbbell },
-    { name: "Geçmiş", href: "/workout/history", icon: History },
-    { name: "Beslenme", href: "/nutrition", icon: Utensils },
-    { name: "Kilo Takibi", href: "/weight", icon: Scale },
-];
-
-export default function DashboardLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
-    const pathname = usePathname();
-    const { data: session } = useSession();
-    
-    const userName = session?.user?.name || "Şampiyon"; 
-    const userInitial = userName.charAt(0).toUpperCase();
-    
-    // 1. Başlangıçta her zaman null olmalı (Sunucu ve ilk client render eşleşsin diye)
-    const [localImage, setLocalImage] = useState<string | null>(null);
-
-    useEffect(() => {
-        // 2. Bileşen yüklendikten sonra localStorage veya session'dan resmi alıyoruz
-        const storedImg = localStorage.getItem("userProfileImage");
-        if (storedImg) {
-            setLocalImage(storedImg);
-        } else if (session?.user?.image) {
-            setLocalImage(session.user.image);
-        }
-
-        // Profil sayfasında resim güncellendiğinde tetiklenecek dinleyici
-        const handleImageUpdate = () => {
-            const updated = localStorage.getItem("userProfileImage");
-            if (updated) setLocalImage(updated);
-        };
-
-        window.addEventListener("profileImageUpdated", handleImageUpdate);
-        return () => window.removeEventListener("profileImageUpdated", handleImageUpdate);
-    }, [session]);
+// Server Component: statik iskelet sunucuda render edilir, yalnızca etkileşimli parçalar (client) hydrate olur.
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-
             {/* DESKTOP SIDEBAR */}
             <aside className="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 z-50 shadow-sm">
                 <div className="p-6 flex items-center gap-3">
@@ -60,94 +19,11 @@ export default function DashboardLayout({
                     </span>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-1.5 mt-4">
-                    {NAV_ITEMS.map((item) => {
-                        const isActive = pathname === item.href;
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium ${isActive
-                                    ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 shadow-sm"
-                                    : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-gray-200"
-                                    }`}
-                            >
-                                <item.icon className={`w-5 h-5 ${isActive ? "stroke-[2.5px]" : "stroke-2"}`} />
-                                {item.name}
-                            </Link>
-                        );
-                    })}
-                </nav>
-
-                {/* Kullanıcı Profili Özeti ve Çıkış Yap (Alt kısım) */}
-                <div className="p-4 m-4 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center justify-between">
-                        
-                        {/* Kullanıcı Profile Erişim */}
-                        <Link href="/profile" className="flex items-center gap-3 overflow-hidden group flex-1 mr-2 cursor-pointer">
-                            {localImage ? (
-                                <img src={localImage} alt={userName} className="w-10 h-10 shrink-0 rounded-full object-cover border border-blue-200 dark:border-blue-800" />
-                            ) : (
-                                <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold border border-blue-200 dark:border-blue-800">
-                                    {userInitial}
-                                </div>
-                            )}
-                            <div className="text-sm overflow-hidden group-hover:opacity-80 transition-opacity">
-                                <p className="font-bold truncate text-gray-900 dark:text-white">{userName}</p>
-                                <p className="text-xs text-blue-500 font-medium truncate">Profili Düzenle</p>
-                            </div>
-                        </Link>
-
-                        {/* Çıkış Yap Butonu */}
-                        <button
-                            onClick={() => signOut({ callbackUrl: '/login' })}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors shrink-0"
-                            title="Çıkış Yap"
-                        >
-                            <LogOut className="w-5 h-5" />
-                        </button>
-                    </div>
-                </div>
+                <SidebarNav />
+                <SidebarUser />
             </aside>
 
-            {/* MOBILE BOTTOM NAV */}
-            <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 z-50 pb-safe">
-                <div className="flex justify-around items-center p-2">
-                    {NAV_ITEMS.map((item) => {
-                        const isActive = pathname === item.href;
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={`flex flex-col items-center justify-center w-16 h-14 rounded-xl transition-colors ${isActive
-                                    ? "text-blue-600 dark:text-blue-400"
-                                    : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    }`}
-                            >
-                                <item.icon className={`w-6 h-6 mb-1 ${isActive ? "stroke-[2.5px]" : "stroke-2"}`} />
-                                <span className="text-[10px] font-semibold">{item.name}</span>
-                            </Link>
-                        );
-                    })}
-                    
-                    {/* Mobilde de profile gitmek için bir link */}
-                    <Link
-                        href="/profile"
-                        className={`flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-colors ${
-                            pathname === "/profile" ? "text-blue-600 dark:text-blue-400" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        }`}
-                    >
-                        {localImage ? (
-                            <img src={localImage} alt={userName} className="w-6 h-6 rounded-full object-cover mb-1 border border-gray-300" />
-                        ) : (
-                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-[10px] mb-1">
-                                {userInitial}
-                            </div>
-                        )}
-                        <span className="text-[10px] font-semibold">Profil</span>
-                    </Link>
-                </div>
-            </nav>
+            <MobileNav />
 
             {/* MAIN CONTENT AREA */}
             <main className="md:pl-64 pb-24 md:pb-6 min-h-screen transition-all duration-300 ease-in-out">
