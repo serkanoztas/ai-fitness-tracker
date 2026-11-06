@@ -1,186 +1,90 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connect";
 import { Workout } from "@/models/Workout";
-import { processWorkoutData } from "@/lib/utils/workout";
 import { Exercise } from "@/models/Exercise";
-import mongoose from "mongoose";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/authOptions";
+import { ApiError, parseBody, validate, withAuth } from "@/lib/api/handler";
+import { createWorkoutSchema, idParamSchema, updateWorkoutSchema } from "@/lib/validation/schemas";
 
+// Büyük/küçük harf duyarsız eşleşme (regex yerine collation: kullanıcı girdisi sorgu desenine karışmaz)
+const CASE_INSENSITIVE = { locale: "en", strength: 2 } as const;
 
-// Bu API route'u, kullanıcının gönderdiği antrenman verilerini alır, geçmişteki en iyi rekorları bulur, PR'ları tespit eder, toplam hacmi hesaplar ve veritabanına kaydeder.
-export async function POST(req: Request) {
+/** İsme göre egzersiz id'sini döndürür; yoksa "Other" kas grubuyla oluşturur. */
+async function resolveExerciseId(name: string) {
+    const find = () => Exercise.findOne({ name }).collation(CASE_INSENSITIVE).select("_id").lean();
+
+    const existing = await find();
+    if (existing) return existing._id;
+
     try {
-
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
+        const created = await Exercise.create({ name, muscleGroup: "Other" });
+        return created._id;
+    } catch (err) {
+        // Aynı anda aynı isimle iki istek gelirse unique index ihlali olur; tekrar aramak yeterli.
+        if ((err as { code?: number }).code === 11000) {
+            const raced = await find();
+            if (raced) return raced._id;
         }
-        const userId = session.user.id; // Güvenlik için Frontend'den gelen ID'ye değil, Session'a güveniyoruz.
-
-        await connectToDatabase();
-        const body = await req.json();
-        const { splitType, exercises } = body;
-
-
-        if (!splitType || !exercises || exercises.length === 0) {
-            return NextResponse.json({ error: "Eksik veri gönderildi." }, { status: 400 });
-        }
-
-        let totalVolume = 0;
-
-        // Egzersizleri işle ve veritabanında yoksa yeni oluştur
-        const processedExercises = await Promise.all(
-            exercises.map(async (ex: any) => {
-                let exerciseDbId;
-                const exerciseName = ex.exerciseName.trim();
-
-                // 1. Veritabanında bu isimde bir egzersiz var mı kontrol et (Büyük/küçük harf duyarsız)
-                const existingEx = await Exercise.findOne({
-                    name: { $regex: new RegExp("^" + exerciseName + "$", "i") }
-                });
-
-                if (existingEx) {
-                    // Varsa mevcut ID'yi kullan
-                    exerciseDbId = existingEx._id;
-                } else {
-                    // Yoksa yeni egzersiz olarak veritabanına kaydet (Varsayılan kas grubu "Other")
-                    const newEx = await Exercise.create({
-                        name: exerciseName,
-                        muscleGroup: "Other"
-                    });
-                    exerciseDbId = newEx._id;
-                }
-
-                // 2. Volume hesaplama (Ağırlık x Tekrar)
-                let exerciseVolume = 0;
-                const processedSets = ex.sets.map((set: any) => {
-                    exerciseVolume += set.weight * set.reps;
-                    return { weight: set.weight, reps: set.reps, isPR: false };
-                });
-
-                totalVolume += exerciseVolume;
-
-                return {
-                    exercise: exerciseDbId,
-                    sets: processedSets,
-                    exerciseVolume,
-                };
-            })
-        );
-
-        // Antrenman kaydı
-        const newWorkout = await Workout.create({
-            user: new mongoose.Types.ObjectId(userId),
-            splitType,
-            exercises: processedExercises,
-            totalVolume,
-        });
-
-        return NextResponse.json(newWorkout, { status: 201 });
-    } catch (error: any) {
-        console.error("Antrenman POST Hatası:", error);
-        return NextResponse.json({ error: "Antrenman kaydedilemedi." }, { status: 500 });
+        throw err;
     }
 }
 
-export async function GET() {
-    try {
+// Kullanıcının gönderdiği antrenmanı doğrular, egzersizleri çözümler, toplam hacmi hesaplar ve kaydeder.
+export const POST = withAuth(async ({ req, userId }) => {
+    const { splitType, exercises } = await parseBody(req, createWorkoutSchema);
 
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
-        }
+    const processedExercises = await Promise.all(
+        exercises.map(async (ex) => {
+            const exerciseId = await resolveExerciseId(ex.exerciseName);
+            const sets = ex.sets.map((set) => ({ weight: set.weight, reps: set.reps, isPR: false }));
+            const exerciseVolume = sets.reduce((sum, set) => sum + set.weight * set.reps, 0);
 
-        await connectToDatabase();
-
-        //Egzersiz isimlerini referanstan (ID) çekiyoruz ve en yeniden eskiye sıralıyoruz
-        const workouts = await Workout.find({ user: new mongoose.Types.ObjectId(session.user.id) })
-            .populate("exercises.exercise")
-            .sort({ date: -1 })
-            .lean();
-
-        return NextResponse.json(workouts, { status: 200 });
-
-    }
-    catch (error: any) {
-        console.error("Antrenman GET Hatası:", error);
-        return NextResponse.json(
-            { error: "Antrenman geçmişi alınırken hata oluştu." },
-            { status: 500 }
-        );
-    }
-}
-
-export async function DELETE(req: Request) {
-    try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
-        }
-
-        await connectToDatabase();
-
-        const url = new URL(req.url);
-        const workoutId = url.searchParams.get("id");
-
-        if (!workoutId) {
-            return NextResponse.json({ error: "Geçersiz antrenman id" }, { status: 401 });
-        }
-
-        const deletedWorkout = await Workout.findOneAndDelete({
-            _id: workoutId,
-            user: new mongoose.Types.ObjectId(session.user.id),
+            return { exercise: exerciseId, sets, exerciseVolume };
         })
+    );
 
-        if (!deletedWorkout) {
-            return NextResponse.json({ error: "Antrenman bulunamadı" }, { status: 401 });
-        }
+    const totalVolume = processedExercises.reduce((sum, ex) => sum + ex.exerciseVolume, 0);
 
-        return NextResponse.json({ message: "Antrenman başarıyla silindi" }, { status: 200 });
+    const newWorkout = await Workout.create({
+        user: userId, // Güvenlik: kullanıcı kimliği istemciden değil session'dan gelir
+        splitType,
+        exercises: processedExercises,
+        totalVolume,
+    });
 
-    }
-    catch (error: any) {
-        console.error("Antrenman DELETE Hatası:", error);
-        return NextResponse.json(
-            { error: "Antrenman silinirken hata oluştu." },
-            { status: 500 }
-        );
-    }
-}
+    return NextResponse.json(newWorkout, { status: 201 });
+}, "Antrenman POST");
 
-export async function PATCH(req: Request) {
-    try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
-        }
+export const GET = withAuth(async ({ userId }) => {
+    // Egzersiz isimlerini referanstan (ID) çekiyoruz ve en yeniden eskiye sıralıyoruz
+    const workouts = await Workout.find({ user: userId })
+        .populate("exercises.exercise")
+        .sort({ date: -1 })
+        .lean();
 
-        await connectToDatabase();
+    return NextResponse.json(workouts, { status: 200 });
+}, "Antrenman GET");
 
-        const body = await req.json();
-        const { workoutId, splitType } = body;
+export const DELETE = withAuth(async ({ req, userId }) => {
+    const workoutId = validate(idParamSchema, new URL(req.url).searchParams.get("id"));
 
-        if (!workoutId || !splitType) {
-            return NextResponse.json({ error: "Eksik veri gönderildi" }, { status: 400 });
-        }
-
-        const updatedWorkout = await Workout.findOneAndUpdate(
-            { _id: workoutId, user: new mongoose.Types.ObjectId(session.user.id) },
-            { $set: { splitType: splitType } },
-            { new: true }
-        );
-
-        if (!updatedWorkout) {
-            return NextResponse.json({ error: "Antrenman bulunamadı veya yetkiniz yok" }, { status: 404 });
-        }
-
-        return NextResponse.json(updatedWorkout, { status: 200 });
-
-
-    } catch (error) {
-        console.error("Antrenman PATCH Hatası:", error);
-        return NextResponse.json({ error: "Antrenman güncellenemedi." }, { status: 500 });
+    const deletedWorkout = await Workout.findOneAndDelete({ _id: workoutId, user: userId });
+    if (!deletedWorkout) {
+        throw new ApiError(404, "Antrenman bulunamadı");
     }
 
-}
+    return NextResponse.json({ message: "Antrenman başarıyla silindi" }, { status: 200 });
+}, "Antrenman DELETE");
+
+export const PATCH = withAuth(async ({ req, userId }) => {
+    const { workoutId, splitType } = await parseBody(req, updateWorkoutSchema);
+
+    const updatedWorkout = await Workout.findOneAndUpdate(
+        { _id: workoutId, user: userId },
+        { $set: { splitType } },
+        { new: true }
+    );
+    if (!updatedWorkout) {
+        throw new ApiError(404, "Antrenman bulunamadı veya yetkiniz yok");
+    }
+
+    return NextResponse.json(updatedWorkout, { status: 200 });
+}, "Antrenman PATCH");

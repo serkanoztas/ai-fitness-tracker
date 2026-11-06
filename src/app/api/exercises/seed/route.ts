@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connect";
+import { ApiError, withAuth } from "@/lib/api/handler";
 import { Exercise } from "@/models/Exercise";
+import type { MuscleGroup } from "@/types";
 
-const INITIAL_EXERCISES = [
+const INITIAL_EXERCISES: { name: string; muscleGroup: MuscleGroup }[] = [
     // Chest
     { name: "Bench Press", muscleGroup: "Chest" },
     { name: "Incline Dumbbell Press", muscleGroup: "Chest" },
@@ -33,28 +34,26 @@ const INITIAL_EXERCISES = [
     { name: "Hanging Leg Raise", muscleGroup: "Core" },
 ];
 
-export async function POST() {
-    try {
-        await connectToDatabase();
-
-        // Mevcut tüm egzersizleri temizle (Çift kayıt olmaması için)
-        await Exercise.deleteMany({});
-
-        // Yeni verileri topluca ekle
-        const result = await Exercise.insertMany(INITIAL_EXERCISES);
-
-        return NextResponse.json(
-            {
-                message: "Veritabanı başarıyla dolduruldu.",
-                insertedCount: result.length
-            },
-            { status: 201 }
-        );
-    } catch (error: any) {
-        console.error("Seed Hatası:", error);
-        return NextResponse.json(
-            { error: "Veritabanı doldurulurken hata oluştu." },
-            { status: 500 }
-        );
+export const POST = withAuth(async () => {
+    // Bu endpoint yalnızca geliştirme ortamında çalışır; production'da hiç var olmamış gibi davranır.
+    if (process.env.NODE_ENV === "production") {
+        throw new ApiError(404, "Not found");
     }
-}
+
+    // Yıkıcı deleteMany yerine idempotent upsert: mevcut egzersizlerin _id'leri
+    // (dolayısıyla Workout referansları) korunur, sadece eksik olanlar eklenir.
+    const result = await Exercise.bulkWrite(
+        INITIAL_EXERCISES.map((ex) => ({
+            updateOne: {
+                filter: { name: ex.name },
+                update: { $setOnInsert: ex },
+                upsert: true,
+            },
+        }))
+    );
+
+    return NextResponse.json(
+        { message: "Veritabanı başarıyla dolduruldu.", insertedCount: result.upsertedCount },
+        { status: 201 }
+    );
+}, "Seed");

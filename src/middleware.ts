@@ -7,13 +7,11 @@ export default withAuth({
     },
 });
 
-// Güvenlik duvarının HANGİ sayfalarda çalışacağını belirliyoruz
+// Varsayılan olarak TÜM sayfalar korunur; yalnızca aşağıdakiler hariç tutulur:
+// login/register, API route'ları (kendi session kontrollerini yapar, /api/auth zaten herkese açık olmalı)
+// ve Next.js statik dosyaları. Yeni eklenen sayfalar otomatik olarak korunmuş olur.
 export const config = {
     matcher: [
-        "/",                  // Ana sayfa (Dashboard)
-        "/workout/:path*",    // Antrenman ve altındaki tüm sayfalar (new, history)
-        "/weight/:path*",     // Kilo takibi sayfası
-
-
+        "/((?!(?:login|register|api)(?:/|$)|_next/static|_next/image|favicon\\.ico|icon\\.svg).*)",
     ],
 };

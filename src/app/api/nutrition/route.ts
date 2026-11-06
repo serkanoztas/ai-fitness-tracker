@@ -1,101 +1,42 @@
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/db/connect";
 import { User } from "@/models/User";
-import mongoose from "mongoose";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/authOptions";
+import { ApiError, parseBody, validate, withAuth } from "@/lib/api/handler";
+import { createNutritionLogSchema, idParamSchema } from "@/lib/validation/schemas";
 
 // GET: Kullanıcının beslenme geçmişini çek
-export async function GET() {
-    try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
-        }
-
-        await connectToDatabase();
-        const user = await User.findById(session.user.id).lean();
-
-        if (!user || !user.nutritionLogs) {
-            return NextResponse.json([], { status: 200 });
-        }
-
-        return NextResponse.json(user.nutritionLogs, { status: 200 });
-    } catch (error) {
-        console.error("Beslenme GET Hatası:", error);
-        return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
-    }
-}
+export const GET = withAuth(async ({ userId }) => {
+    const user = await User.findById(userId).select("nutritionLogs").lean();
+    return NextResponse.json(user?.nutritionLogs ?? [], { status: 200 });
+}, "Beslenme GET");
 
 // POST: Yeni bir günlük makro/kalori kaydı ekle
-export async function POST(req: Request) {
-    try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
-        }
+export const POST = withAuth(async ({ req, userId }) => {
+    const { calories, protein, carbs, fat } = await parseBody(req, createNutritionLogSchema);
 
-        await connectToDatabase();
-        const body = await req.json();
-        const { calories, protein, carbs, fat } = body;
-
-        // Sadece kalori zorunlu, diğerleri boş geçilirse 0 sayılacak
-        if (!calories || isNaN(Number(calories))) {
-            return NextResponse.json({ error: "Geçerli bir kalori değeri giriniz" }, { status: 400 });
-        }
-
-        const newLog = {
-            calories: Number(calories),
-            protein: Number(protein) || 0,
-            carbs: Number(carbs) || 0,
-            fat: Number(fat) || 0,
-            date: new Date(),
-        };
-
-        const updatedUser = await User.findOneAndUpdate(
-            { _id: new mongoose.Types.ObjectId(session.user.id) },
-            { $push: { nutritionLogs: newLog } },
-            { new: true }
-        );
-
-        return NextResponse.json(updatedUser?.nutritionLogs, { status: 201 });
-    } catch (error) {
-        console.error("Beslenme POST Hatası:", error);
-        return NextResponse.json({ error: "Kaydedilemedi" }, { status: 500 });
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $push: { nutritionLogs: { calories, protein, carbs, fat, date: new Date() } } },
+        { new: true }
+    );
+    if (!updatedUser) {
+        throw new ApiError(404, "Kullanıcı bulunamadı");
     }
-}
+
+    return NextResponse.json(updatedUser.nutritionLogs, { status: 201 });
+}, "Beslenme POST");
 
 // DELETE: belirli bir beslenme kaydını sil
-export async function DELETE(req: Request) {
-    try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });
-        }
+export const DELETE = withAuth(async ({ req, userId }) => {
+    const logId = validate(idParamSchema, new URL(req.url).searchParams.get("id"));
 
-        await connectToDatabase();
-        const url = new URL(req.url);
-        const LogId = url.searchParams.get("id");
-
-        if (!LogId) {
-            return NextResponse.json({ error: "Geçersiz kalori ID" }, { status: 400 });
-        }
-
-        const updatedUser = await User.findOneAndUpdate(
-            { _id: new mongoose.Types.ObjectId(session.user.id) },
-            { $pull: { nutritionLogs: { _id: new mongoose.Types.ObjectId(LogId) } } },
-            { new: true }
-        )
-
-        if (!updatedUser) {
-            return NextResponse.json({ error: "Kullanıcı bulunamadı" }, { status: 404 });
-        }
-
-        return NextResponse.json(updatedUser.nutritionLogs, { status: 200 });
-
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $pull: { nutritionLogs: { _id: logId } } },
+        { new: true }
+    );
+    if (!updatedUser) {
+        throw new ApiError(404, "Kullanıcı bulunamadı");
     }
-    catch (error) {
-        console.error("Beslenme DELETE Hatası:", error);
-        return NextResponse.json({ error: "Silinemedi" }, { status: 500 });
-    }
-}
+
+    return NextResponse.json(updatedUser.nutritionLogs, { status: 200 });
+}, "Beslenme DELETE");
