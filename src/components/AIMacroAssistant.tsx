@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Bot, X, Sparkles, Activity, Flame, Check, ChevronRight } from "lucide-react";
+import { Bot, X, Sparkles, Flame, Check, ChevronRight } from "lucide-react";
 import { apiRequest, getErrorMessage } from "@/lib/api/client";
 import { ACTIVITY_LEVELS, MACRO_GOALS } from "@/lib/constants";
 import type { MacroResultDTO } from "@/types/api";

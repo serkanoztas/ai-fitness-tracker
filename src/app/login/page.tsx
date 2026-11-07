@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { LoadingRegion, Skeleton } from "@/components/ui/Skeleton";
 import { Dumbbell, Mail, Lock, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 
 // searchParams kullanımı için bileşeni Suspense içine almalıyız
@@ -121,7 +122,17 @@ function LoginForm() {
 export default function LoginPage() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-            <Suspense fallback={<div className="text-gray-500 animate-pulse">Yükleniyor...</div>}>
+            <Suspense
+                fallback={
+                    <LoadingRegion label="Giriş formu yükleniyor" className="w-full max-w-md space-y-5 rounded-3xl p-8">
+                        <Skeleton className="mx-auto h-14 w-14" />
+                        <Skeleton className="mx-auto h-6 w-48" />
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                    </LoadingRegion>
+                }
+            >
                 <LoginForm />
             </Suspense>
         </div>

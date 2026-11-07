@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Activity, Bot, Zap } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { LoadingRegion, Skeleton } from "@/components/ui/Skeleton";
 import { apiRequest, getErrorMessage } from "@/lib/api/client";
 
 /**
@@ -58,6 +59,22 @@ export function AiCoach() {
                     </button>
                 </div>
             </div>
+
+            {isLoading && (
+                <LoadingRegion label="AI koç raporu hazırlanıyor" className="col-span-full space-y-4 rounded-3xl border border-zinc-200 p-6 md:p-8 dark:border-zinc-800/60">
+                    <div className="flex items-center gap-3">
+                        <Skeleton className="h-12 w-12 shrink-0" />
+                        <div className="flex-1 space-y-2">
+                            <Skeleton className="h-6 w-48 max-w-full" />
+                            <Skeleton className="h-4 w-64 max-w-full" />
+                        </div>
+                    </div>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-11/12" />
+                    <Skeleton className="h-4 w-4/5" />
+                    <Skeleton className="h-4 w-2/3" />
+                </LoadingRegion>
+            )}
 
             {error && (
                 <div className="col-span-full p-4 bg-red-50 text-red-600 rounded-xl border border-red-200">{error}</div>

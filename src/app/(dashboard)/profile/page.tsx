@@ -99,7 +99,9 @@ export default function ProfilePage() {
                     <div className="flex flex-col items-center justify-center space-y-4">
                         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                             {image ? (
-                                <img 
+                                // next/image yerine <img>: kaynak çoğunlukla base64 data URL (önizleme), optimize edilecek bir dosya değil
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
                                     src={image} 
                                     alt="Profil" 
                                     className="w-32 h-32 rounded-full object-cover border-4 border-gray-50 dark:border-gray-900 shadow-md group-hover:opacity-75 transition-opacity"

@@ -4,11 +4,22 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Flame, Save, Activity, Droplet, Wheat, Utensils, Trash, TrendingUp } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useDialogs } from "@/components/ui/DialogProvider";
+import { LoadingRegion, Skeleton } from "@/components/ui/Skeleton";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { apiRequest, getErrorMessage } from "@/lib/api/client";
 import type { DailyGoalsDTO, NutritionLogDTO } from "@/types/api";
 
 const EMPTY_FORM = { calories: "", protein: "", carbs: "", fat: "" };
+const CALORIES_INPUT_ID = "nutrition-calories";
+
+/** Boş durumdaki "İlk kaydı gir" aksiyonu: form alanına kaydırır ve odaklar. */
+const focusCaloriesInput = () => {
+    const input = document.getElementById(CALORIES_INPUT_ID);
+    input?.scrollIntoView({ behavior: "smooth", block: "center" });
+    input?.focus({ preventScroll: true });
+};
 
 export default function NutritionPage() {
     const { data: logs, setData: setLogs, isLoading, error } = useApiQuery<NutritionLogDTO[]>("/api/nutrition", []);
@@ -25,6 +36,7 @@ export default function NutritionPage() {
 
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { confirm } = useDialogs();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,8 +55,15 @@ export default function NutritionPage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm("Bu beslenme kaydını silmek istediğinden emin misin?")) return;
+    const handleDelete = async (log: NutritionLogDTO) => {
+        const id = log._id;
+        const confirmed = await confirm({
+            title: "Beslenme kaydını sil",
+            description: `${log.calories} kcal'lik bu kayıt kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+            confirmLabel: "Sil",
+            tone: "danger",
+        });
+        if (!confirmed) return;
 
         try {
             await apiRequest<{ _id: string }>(`/api/nutrition?id=${id}`, { method: "DELETE" });
@@ -111,6 +130,7 @@ export default function NutritionPage() {
                             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Toplam Kalori *</label>
                             <div className="relative">
                                 <input
+                                    id={CALORIES_INPUT_ID}
                                     type="number"
                                     required
                                     value={formData.calories}
@@ -191,7 +211,8 @@ export default function NutritionPage() {
                             <button
                                 className="ml-auto md:ml-1 p-2 rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors group"
                                 title="Beslenme kaydını Sil"
-                                onClick={() => handleDelete(latestLog._id)}
+                                onClick={() => handleDelete(latestLog)}
+                                aria-label="Beslenme kaydını sil"
                             >
                                 <Trash className="w-5 h-5 text-gray-400 group-hover:text-red-500 transition-colors" />
                             </button>
@@ -200,14 +221,23 @@ export default function NutritionPage() {
                     <p className="text-sm text-gray-500 mb-6">En son kaydettiğin makro dağılımı</p>
 
                     {isLoading ? (
-                        <div className="flex-1 flex items-center justify-center text-gray-400 animate-pulse">
-                            Yükleniyor...
-                        </div>
+                        <LoadingRegion label="Beslenme verisi yükleniyor" className="flex-1 flex flex-col items-center gap-6">
+                            <Skeleton className="h-48 w-48 !rounded-full" />
+                            <div className="flex w-full justify-center gap-6">
+                                <Skeleton className="h-10 w-20" />
+                                <Skeleton className="h-10 w-20" />
+                                <Skeleton className="h-10 w-20" />
+                            </div>
+                        </LoadingRegion>
                     ) : !latestLog ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-                            <Utensils className="w-10 h-10 mb-3 opacity-20" />
-                            <p>Henüz beslenme verisi girmediniz.</p>
-                        </div>
+                        <EmptyState
+                            bare
+                            className="flex-1"
+                            icon={Utensils}
+                            title="Henüz beslenme verisi yok"
+                            description="İlk günlüğünü kaydettiğinde makro dağılımın burada görünecek."
+                            action={{ label: "İlk kaydı gir", onClick: focusCaloriesInput, icon: Flame }}
+                        />
                     ) : (
                         <div className="flex-1 flex flex-col items-center">
 

@@ -3,6 +3,10 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Save, Dumbbell, BookmarkPlus, LibraryBig, Loader2 } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useDialogs } from "@/components/ui/DialogProvider";
+import { LoadingRegion, Skeleton } from "@/components/ui/Skeleton";
+import { apiRequest, getErrorMessage } from "@/lib/api/client";
 import { WORKOUT_SPLITS } from "@/lib/constants";
 
 const SPLIT_TYPES: readonly string[] = WORKOUT_SPLITS;
@@ -149,6 +153,7 @@ function WorkoutForm() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSavingRoutine, setIsSavingRoutine] = useState(false);
+    const { confirm, prompt } = useDialogs();
 
     // Taslağı her tuş vuruşunda değil, yazma durunca kaydet (debounce)
     useEffect(() => {
@@ -195,8 +200,12 @@ function WorkoutForm() {
 
     // --- ŞABLON (ROUTINE) İŞLEMLERİ ---
 
-    const loadRoutine = (routine: RoutineTemplate) => {
-        const confirmLoad = window.confirm(`"${routine.routineName}" şablonunu yüklemek mevcut formu temizleyecektir. Onaylıyor musunuz?`);
+    const loadRoutine = async (routine: RoutineTemplate) => {
+        const confirmLoad = await confirm({
+            title: "Şablonu yükle",
+            description: `"${routine.routineName}" şablonunu yüklemek formdaki mevcut antrenmanı temizleyecek.`,
+            confirmLabel: "Şablonu yükle",
+        });
         if (!confirmLoad) return;
 
         setSplitType(routine.splitType);
@@ -210,6 +219,24 @@ function WorkoutForm() {
         );
     };
 
+    const deleteRoutine = async (routine: RoutineTemplate) => {
+        const confirmed = await confirm({
+            title: "Şablonu sil",
+            description: `"${routine.routineName}" şablonu kalıcı olarak silinecek. Geçmiş antrenmanların etkilenmez.`,
+            confirmLabel: "Sil",
+            tone: "danger",
+        });
+        if (!confirmed) return;
+
+        try {
+            await apiRequest(`/api/routines?id=${routine._id}`, { method: "DELETE" });
+            setRoutines((prev) => prev.filter((r) => r._id !== routine._id));
+            toast.success("Şablon silindi.");
+        } catch (err) {
+            toast.error(getErrorMessage(err, "Şablon silinemedi."));
+        }
+    };
+
     const saveAsRoutine = async () => {
         const namedExercises = exercises.filter((ex) => ex.exerciseName.trim() !== "");
         if (namedExercises.length === 0) {
@@ -217,7 +244,14 @@ function WorkoutForm() {
             return;
         }
 
-        const routineName = window.prompt("Şablonunuz için bir isim girin (Örn: Push - Güç Günü):")?.trim();
+        const routineName = await prompt({
+            title: "Şablonu kaydet",
+            description: "Bu antrenmanı daha sonra tek dokunuşla yükleyebilmek için bir isim ver.",
+            label: "Şablon adı",
+            placeholder: "Örn: Push - Güç Günü",
+            confirmLabel: "Şablonu kaydet",
+            maxLength: 60,
+        });
         if (!routineName) return;
 
         setIsSavingRoutine(true);
@@ -347,29 +381,47 @@ function WorkoutForm() {
                 </div>
 
                 {isLoadingData ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Yükleniyor...
-                    </div>
+                    <LoadingRegion label="Şablonlar yükleniyor" className="flex gap-3 overflow-hidden pb-2">
+                        {Array.from({ length: 3 }, (_, i) => (
+                            <Skeleton key={i} className="h-16 w-44 shrink-0" />
+                        ))}
+                    </LoadingRegion>
                 ) : routines.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50">
-                        Henüz kaydedilmiş bir şablonunuz yok. Antrenman formunu doldurup &quot;Şablon Yap&quot; butonunu kullanabilirsiniz.
-                    </p>
+                    <EmptyState
+                        icon={BookmarkPlus}
+                        title="Henüz şablonun yok"
+                        description="Antrenman formunu doldurup “Şablon Yap” butonunu kullanırsan sık yaptığın antrenmanları tek dokunuşla yükleyebilirsin."
+                        action={{ label: "Şablon Yap", onClick: saveAsRoutine, icon: BookmarkPlus }}
+                        className="py-8"
+                    />
                 ) : (
                     <div className="flex overflow-x-auto pb-2 gap-3 custom-scrollbar">
                         {routines.map((routine) => (
-                            <button
+                            <div
                                 key={routine._id}
-                                type="button"
-                                onClick={() => loadRoutine(routine)}
-                                className="flex-shrink-0 bg-white dark:bg-gray-800 px-4 py-3 rounded-xl border border-indigo-100 dark:border-indigo-900 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left flex flex-col min-w-[140px] group"
+                                className="group relative flex-shrink-0 min-w-[140px] rounded-xl border border-indigo-100 bg-white shadow-sm transition-all duration-200 hover:border-indigo-300 dark:border-indigo-900 dark:bg-gray-800 dark:hover:border-indigo-700"
                             >
-                                <span className="text-sm font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                                    {routine.routineName}
-                                </span>
-                                <span className="text-xs text-gray-500 mt-1">
-                                    {routine.splitType} • {routine.exercises.length} Hareket
-                                </span>
-                            </button>
+                                <button
+                                    type="button"
+                                    onClick={() => loadRoutine(routine)}
+                                    className="flex w-full flex-col rounded-xl py-3 pl-4 pr-10 text-left transition-all duration-200 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50"
+                                >
+                                    <span className="text-sm font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                        {routine.routineName}
+                                    </span>
+                                    <span className="text-xs text-gray-500 mt-1">
+                                        {routine.splitType} • {routine.exercises.length} Hareket
+                                    </span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => deleteRoutine(routine)}
+                                    aria-label={`${routine.routineName} şablonunu sil`}
+                                    className="absolute right-1.5 top-1.5 rounded-lg p-1.5 text-gray-400 transition-all duration-200 hover:bg-red-50 hover:text-red-500 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/50 dark:hover:bg-red-900/30"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
                         ))}
                     </div>
                 )}

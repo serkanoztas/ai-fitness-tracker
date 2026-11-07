@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { CalendarDays, Trophy, Dumbbell, Activity, Search, History, Trash, Edit2, X } from "lucide-react";
+import { CalendarDays, Trophy, Dumbbell, Activity, Search, History, Trash, Edit2, X, Plus } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useDialogs } from "@/components/ui/DialogProvider";
+import { LoadingRegion, Skeleton } from "@/components/ui/Skeleton";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { apiRequest, getErrorMessage } from "@/lib/api/client";
 import { WORKOUT_SPLITS } from "@/lib/constants";
@@ -15,9 +18,17 @@ export default function HistoryPage() {
     const { data: workouts, setData: setWorkouts, isLoading, error } = useApiQuery<WorkoutDTO[]>("/api/workouts", []);
     const [searchTerm, setSearchTerm] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
+    const { confirm } = useDialogs();
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm("Bu antrenmanı silmek istediğinden emin misin?")) return;
+    const handleDelete = async (workout: WorkoutDTO) => {
+        const id = workout._id;
+        const confirmed = await confirm({
+            title: "Antrenmanı sil",
+            description: `${workout.splitType} antrenmanı (${formatDate(workout.date)}) ve içindeki tüm setler kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+            confirmLabel: "Sil",
+            tone: "danger",
+        });
+        if (!confirmed) return;
 
         try {
             await apiRequest(`/api/workouts?id=${id}`, { method: "DELETE" });
@@ -57,12 +68,30 @@ export default function HistoryPage() {
 
     if (isLoading) {
         return (
-            <div className="flex h-[80vh] items-center justify-center">
-                <div className="flex flex-col items-center gap-4 text-gray-400">
-                    <History className="w-10 h-10 animate-spin text-blue-500" />
-                    <p className="font-medium animate-pulse">Geçmiş yükleniyor...</p>
+            <LoadingRegion label="Antrenman geçmişi yükleniyor" className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
+                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-8">
+                    <div className="space-y-3">
+                        <Skeleton className="h-8 w-64" />
+                        <Skeleton className="h-4 w-80 max-w-full" />
+                    </div>
+                    <Skeleton className="h-11 w-full md:w-72" />
                 </div>
-            </div>
+                {Array.from({ length: 3 }, (_, i) => (
+                    <div key={i} className="space-y-4 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800/60">
+                        <div className="flex items-center gap-4">
+                            <Skeleton className="h-14 w-14 shrink-0" />
+                            <div className="flex-1 space-y-2">
+                                <Skeleton className="h-5 w-48 max-w-full" />
+                                <Skeleton className="h-4 w-36" />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <Skeleton className="h-24" />
+                            <Skeleton className="hidden h-24 md:block" />
+                        </div>
+                    </div>
+                ))}
+            </LoadingRegion>
         );
     }
 
@@ -89,10 +118,20 @@ export default function HistoryPage() {
 
             {error && <p className="text-sm text-red-500">{error}</p>}
 
-            {filteredWorkouts.length === 0 ? (
-                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700">
-                    <p className="text-gray-500 dark:text-gray-400">Kayıtlı antrenman bulunamadı.</p>
-                </div>
+            {workouts.length === 0 ? (
+                <EmptyState
+                    icon={History}
+                    title="Henüz antrenman kaydın yok"
+                    description="İlk antrenmanını kaydettiğinde hacim, set ve rekor geçmişin burada görünecek."
+                    action={{ label: "İlk antrenmanı kaydet", href: "/workout/new", icon: Plus }}
+                />
+            ) : filteredWorkouts.length === 0 ? (
+                <EmptyState
+                    icon={Search}
+                    title="Aramana uyan antrenman yok"
+                    description={`"${searchTerm}" ile eşleşen bir kayıt bulunamadı. Farklı bir bölge veya ay adı deneyebilirsin.`}
+                    action={{ label: "Aramayı temizle", onClick: () => setSearchTerm(""), icon: X }}
+                />
             ) : (
                 <div className="space-y-4">
                     {filteredWorkouts.map((workout) => {
@@ -151,7 +190,8 @@ export default function HistoryPage() {
                                                 <Edit2 className="w-5 h-5 text-gray-500 hover:text-blue-500 transition-colors" />
                                             </button>
                                             <button
-                                                onClick={() => handleDelete(workout._id)}
+                                                onClick={() => handleDelete(workout)}
+                                                aria-label="Antrenmanı sil"
                                                 className="p-2 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                                 title="Antrenmanı Sil"
                                             >

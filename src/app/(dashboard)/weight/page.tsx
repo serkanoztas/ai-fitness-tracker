@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Scale, Save, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Scale, Save, TrendingUp, TrendingDown, Minus, LineChart as LineChartIcon } from "lucide-react";
 import {
     LineChart,
     Line,
@@ -12,9 +12,20 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from "recharts";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingRegion, Skeleton } from "@/components/ui/Skeleton";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { apiRequest, getErrorMessage } from "@/lib/api/client";
 import type { WeightLogDTO } from "@/types/api";
+
+const WEIGHT_INPUT_ID = "weight-input";
+
+/** Boş durumdaki "Kilo gir" aksiyonu: form alanına kaydırır ve odaklar. */
+const focusWeightInput = () => {
+    const input = document.getElementById(WEIGHT_INPUT_ID);
+    input?.scrollIntoView({ behavior: "smooth", block: "center" });
+    input?.focus({ preventScroll: true });
+};
 
 export default function WeightPage() {
     const { data: weightLogs, setData: setWeightLogs, isLoading, error } = useApiQuery<WeightLogDTO[]>("/api/weight", []);
@@ -77,6 +88,7 @@ export default function WeightPage() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="relative">
                             <input
+                                id={WEIGHT_INPUT_ID}
                                 type="number"
                                 step="0.1"
                                 min="30"
@@ -126,14 +138,22 @@ export default function WeightPage() {
                     <h3 className="font-semibold text-gray-800 dark:text-white mb-6">Kilo Trendi</h3>
 
                     {isLoading ? (
-                        <div className="h-64 flex items-center justify-center text-gray-400 animate-pulse">
-                            Grafik Yükleniyor...
-                        </div>
+                        <LoadingRegion label="Kilo grafiği yükleniyor">
+                            <Skeleton className="h-64 w-full" />
+                        </LoadingRegion>
                     ) : weightLogs.length < 2 ? (
-                        <div className="h-64 flex flex-col items-center justify-center text-center text-gray-400">
-                            <Scale className="w-8 h-8 mb-2 opacity-50" />
-                            <p>Grafik çizilebilmesi için en az 2 gün kilo girmelisin.</p>
-                        </div>
+                        <EmptyState
+                            bare
+                            className="h-64"
+                            icon={LineChartIcon}
+                            title={weightLogs.length === 0 ? "Henüz kilo kaydın yok" : "Trend için bir kayıt daha gerekli"}
+                            description={
+                                weightLogs.length === 0
+                                    ? "İlk kilonu girdiğinde gelişim grafiğin burada oluşmaya başlayacak."
+                                    : "Grafik çizilebilmesi için en az 2 farklı kilo kaydı girmelisin."
+                            }
+                            action={{ label: "Kilo gir", onClick: focusWeightInput, icon: Scale }}
+                        />
                     ) : (
                         <div className="h-64 w-full">
                             <ResponsiveContainer width="100%" height="100%">

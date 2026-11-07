@@ -1,4 +1,4 @@
-import NextAuth, { DefaultSession } from "next-auth";
+import type { DefaultSession } from "next-auth";
 
 declare module "next-auth" {
     // 1. Session (Oturum) içine id'yi ekliyoruz
