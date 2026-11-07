@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { AiReport } from "@/models/AiReport";
 import { ApiError, withAuth } from "@/lib/api/handler";
+import { RATE_LIMITS } from "@/lib/api/rateLimits";
 import { buildTrainingContext } from "@/lib/ai/context";
 import { generateText } from "@/lib/ai/gemini";
 import { ANALYSIS_PROMPT_VERSION, FITNESS_COACH_SYSTEM_PROMPT, buildWorkoutAnalysisPrompt } from "@/lib/ai/prompt";
@@ -70,4 +71,4 @@ export const POST = withAuth(async ({ userId }) => {
         { analysis: saved?.analysis ?? result.text, cached: false, generatedAt: saved?.createdAt ?? new Date() },
         { status: 200 }
     );
-}, "AI Analiz");
+}, "AI Analiz", { rateLimit: { ip: RATE_LIMITS.aiAnalysisIp, user: RATE_LIMITS.aiAnalysisUser } });

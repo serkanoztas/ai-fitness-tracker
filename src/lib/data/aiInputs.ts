@@ -1,3 +1,4 @@
+import { trusted } from "mongoose";
 import { Workout } from "@/models/Workout";
 import { WeightLog } from "@/models/WeightLog";
 import { NutritionLog } from "@/models/NutritionLog";
@@ -32,12 +33,12 @@ export async function loadAiInputs(userId: string, now = new Date()): Promise<Ai
 
     const [previous, windowWeights, latestWeight, nutritionLogs] = await Promise.all([
         // Elma ile elmayı kıyasla: aynı bölgedeki bir önceki antrenman
-        Workout.findOne({ user: userId, splitType: latest.splitType, date: { $lt: latest.date } })
+        Workout.findOne({ user: userId, splitType: latest.splitType, date: trusted({ $lt: latest.date }) })
             .sort({ date: -1 })
             .select("date splitType totalVolume exercises")
             .populate(EXERCISE_POPULATE)
             .lean<LeanWorkout>(),
-        WeightLog.find({ user: userId, date: { $gte: since } }).select("weight date").sort({ date: 1 }).lean<WeightPoint[]>(),
+        WeightLog.find({ user: userId, date: trusted({ $gte: since }) }).select("weight date").sort({ date: 1 }).lean<WeightPoint[]>(),
         // Son 30 günde kayıt yoksa bile güncel kiloyu bilmek için
         WeightLog.findOne({ user: userId }).sort({ date: -1 }).select("weight date").lean<WeightPoint>(),
         NutritionLog.find({ user: userId })

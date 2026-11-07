@@ -9,12 +9,18 @@ const ExerciseSchema = new Schema<IExercise>(
     {
         name: { type: String, required: true, trim: true },
         muscleGroup: { type: String, enum: MUSCLE_GROUPS, required: true },
+        // Sahip: null/yok -> sistem (seed) egzersizi, herkese açık. Dolu -> yalnızca o kullanıcıya özel.
+        user: { type: Schema.Types.ObjectId, ref: "User", default: null },
     },
     { timestamps: true }
 );
 
-// Büyük/küçük harfe duyarsız unique: "Bench Press" ve "bench press" artık ikinci bir kayıt olamaz.
-// Eski `name_1` (harfe duyarlı) indeksiyle çakışmaması için açık bir isim verilmiştir.
-ExerciseSchema.index({ name: 1 }, { unique: true, collation: EXERCISE_NAME_COLLATION, name: "name_ci_unique" });
+// İsim, sahip bazında büyük/küçük harfe duyarsız tektir: aynı kullanıcı "Bench Press" ve "bench press"
+// oluşturamaz, ama farklı kullanıcılar aynı isimde kendi egzersizlerini taşıyabilir.
+// Sistem egzersizleri (user: null) arasında da isim tektir.
+ExerciseSchema.index(
+    { user: 1, name: 1 },
+    { unique: true, collation: EXERCISE_NAME_COLLATION, name: "owner_name_ci_unique" }
+);
 
 export const Exercise: Model<IExercise> = mongoose.models.Exercise || mongoose.model<IExercise>("Exercise", ExerciseSchema);

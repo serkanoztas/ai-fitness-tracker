@@ -45,7 +45,7 @@ export const POST = withAuth(async () => {
     const result = await Exercise.bulkWrite(
         INITIAL_EXERCISES.map((ex) => ({
             updateOne: {
-                filter: { name: ex.name },
+                filter: { name: ex.name, user: null },
                 update: { $setOnInsert: ex },
                 upsert: true,
                 // Unique indeksle aynı collation: "bench press" varsa "Bench Press" tekrar eklenmeye çalışılmaz.

@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
 
+// Sorgu filtrelerindeki iç içe `$` operatörlerini $eq ile sarar: istemciden gelen { "$ne": null } gibi nesneler
+// sorgu operatörü olarak çalışmaz. Bilerek operatör kullanılan yerlerde mongoose.trusted() kullanılmalıdır.
+mongoose.set("sanitizeFilter", true);
+
 // TypeScript'te global objeyi genişleterek mongoose önbelleğini tanımlıyoruz
 interface MongooseCache {
     conn: typeof mongoose | null;

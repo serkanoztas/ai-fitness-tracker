@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ApiError, parseBody, withAuth } from "@/lib/api/handler";
+import { RATE_LIMITS } from "@/lib/api/rateLimits";
 import { generateText } from "@/lib/ai/gemini";
 import { MIN_CALORIE_NOTICE, calculateMacros, fallbackAdvice } from "@/lib/ai/macro";
 import { MACRO_ADVICE_SYSTEM_PROMPT, buildMacroAdvicePrompt } from "@/lib/ai/prompt";
@@ -66,4 +67,4 @@ export const POST = withAuth(async ({ req }) => {
         { calories: result.calories, protein: result.protein, carbs: result.carbs, fat: result.fat, ai_advice: advice },
         { status: 200 }
     );
-}, "AI Macro Calculator", { db: false });
+}, "AI Macro Calculator", { rateLimit: { ip: RATE_LIMITS.aiMacroIp, user: RATE_LIMITS.aiMacroUser } });

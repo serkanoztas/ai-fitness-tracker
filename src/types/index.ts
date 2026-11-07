@@ -15,6 +15,8 @@ export interface ISet {
 export interface IExercise extends Document {
     name: string;
     muscleGroup: MuscleGroup;
+    /** null/yok: sistem egzersizi (herkese açık); dolu: yalnızca bu kullanıcıya özel */
+    user?: Types.ObjectId | null;
     createdAt: Date;
     updatedAt: Date;
 }

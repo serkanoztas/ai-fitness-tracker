@@ -1,8 +1,27 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { connectToDatabase } from "@/lib/db/connect";
+import { consumeRateLimit, getClientIp } from "@/lib/api/rateLimit";
+import { RATE_LIMITS } from "@/lib/api/rateLimits";
+import { loginSchema } from "@/lib/validation/schemas";
 import { User } from "@/models/User";
 import bcrypt from "bcryptjs";
+
+/** Oturum (JWT) geçerlilik süresi: 7 gün */
+const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+
+/**
+ * Hangi nedenle olursa olsun başarısız girişte kullanıcıya gösterilen tek mesaj:
+ * "kullanıcı yok", "parola yanlış" ve "geçersiz biçim" birbirinden ayırt edilemez.
+ */
+const INVALID_CREDENTIALS = "E-posta veya şifre hatalı.";
+const TOO_MANY_ATTEMPTS = "Çok fazla giriş denemesi yaptınız. Lütfen birkaç dakika sonra tekrar deneyin.";
+
+/**
+ * Var olmayan kullanıcı için de bcrypt karşılaştırması yapabilmek için sahte hash (maliyet faktörü kayıttakiyle aynı: 10).
+ * Böylece "kullanıcı yok" yanıtı "parola yanlış" yanıtından belirgin biçimde hızlı olmaz.
+ */
+const DUMMY_PASSWORD_HASH = "$2b$10$Rt402v/MpooA2LxA4Gymzuc4xQRixOddMS/IKfw2bGj6eYpmF/S4C";
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -12,27 +31,34 @@ export const authOptions: NextAuthOptions = {
                 email: { label: "Email", type: "email" },
                 password: { label: "Şifre", type: "password" }
             },
-            async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) {
-                    throw new Error("Lütfen email ve şifre girin.");
+            async authorize(credentials, req) {
+                const parsed = loginSchema.safeParse(credentials);
+                if (!parsed.success) {
+                    throw new Error(INVALID_CREDENTIALS);
                 }
+                const { email, password } = parsed.data;
 
                 await connectToDatabase();
 
-                // password şemada select:false olduğu için burada açıkça isteniyor; e-posta kayıttaki gibi normalize edilir.
-                const user = await User.findOne({ email: credentials.email.trim().toLowerCase() }).select("+password");
-                if (!user) {
-                    throw new Error("Bu email ile kayıtlı kullanıcı bulunamadı.");
+                // Hız sınırı: önce IP, sonra hesap bazında (parola denemeleri ve bcrypt CPU maliyeti için)
+                const ip = getClientIp((name) => {
+                    const value = req?.headers?.[name];
+                    return Array.isArray(value) ? value[0] : value;
+                });
+                const [ipResult, accountResult] = await Promise.all([
+                    consumeRateLimit(RATE_LIMITS.loginIp, ip),
+                    consumeRateLimit(RATE_LIMITS.loginAccount, email),
+                ]);
+                if (!ipResult.allowed || !accountResult.allowed) {
+                    throw new Error(TOO_MANY_ATTEMPTS);
                 }
 
-                // Şifre boşsa direkt işlemi reddet
-                if (!user.password) {
-                    throw new Error("Şifre bulunamadı.");
-                }
+                // password şemada select:false olduğu için burada açıkça isteniyor
+                const user = await User.findOne({ email }).select("+password");
 
-                const isValid = await bcrypt.compare(credentials.password, user.password);
-                if (!isValid) {
-                    throw new Error("Hatalı şifre.");
+                const isValid = await bcrypt.compare(password, user?.password ?? DUMMY_PASSWORD_HASH);
+                if (!user || !user.password || !isValid) {
+                    throw new Error(INVALID_CREDENTIALS);
                 }
 
                 return {
@@ -43,15 +69,15 @@ export const authOptions: NextAuthOptions = {
             }
         })
     ],
-callbacks: {
+    callbacks: {
         async jwt({ token, user, trigger, session }) {
             if (user) {
                 token.id = user.id;
                 token.name = user.name;
-                
+
                 // Eğer resim Google URL'si ise (kısadır) al, Base64 ise (devasadır) alma!
                 if (user.image && user.image.length < 1000) {
-                    token.image = user.image; 
+                    token.image = user.image;
                 }
             }
 
@@ -67,7 +93,7 @@ callbacks: {
             if (token && session.user) {
                 session.user.id = token.id as string;
                 session.user.name = token.name as string;
-                session.user.image = token.image as string; 
+                session.user.image = token.image as string;
             }
             return session;
         }
@@ -77,6 +103,10 @@ callbacks: {
     },
     session: {
         strategy: "jwt",
+        maxAge: SESSION_MAX_AGE_SECONDS,
+    },
+    jwt: {
+        maxAge: SESSION_MAX_AGE_SECONDS,
     },
     secret: process.env.NEXTAUTH_SECRET,
 };

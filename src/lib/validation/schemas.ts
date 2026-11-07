@@ -7,6 +7,7 @@ import {
     type ActivityLevelId,
     type MacroGoalId,
 } from "@/lib/constants";
+import { normalizeText } from "@/lib/text";
 
 // --- Ortak yapı taşları ---
 
@@ -18,12 +19,23 @@ const num = (label: string, min: number, max: number) =>
         .max(max, `${label} en fazla ${max} olabilir.`);
 
 const objectId = z.string({ error: "Geçersiz id." }).regex(/^[a-f\d]{24}$/i, "Geçersiz id.");
-const splitType = z.enum(WORKOUT_SPLITS,{ error: "Geçersiz antrenman tipi." });
-const exerciseName = z
-    .string({ error: "Egzersiz adı gereklidir." })
-    .trim()
-    .min(1, "Egzersiz adı boş olamaz.")
-    .max(80, "Egzersiz adı en fazla 80 karakter olabilir.");
+const splitType = z.enum(WORKOUT_SPLITS, { error: "Geçersiz antrenman tipi." });
+
+/**
+ * Kullanıcının serbest metin alanları: Unicode (NFKC) normalizasyonu, boşluk sadeleştirme ve
+ * görünmez/denetim karakteri temizliği uygulanır; ardından uzunluk doğrulanır.
+ */
+const cleanText = (max: number, messages: { required: string; empty: string; tooLong: string }) =>
+    z
+        .string({ error: messages.required })
+        .transform(normalizeText)
+        .pipe(z.string().min(1, messages.empty).max(max, messages.tooLong));
+
+const exerciseName = cleanText(80, {
+    required: "Egzersiz adı gereklidir.",
+    empty: "Egzersiz adı boş olamaz.",
+    tooLong: "Egzersiz adı en fazla 80 karakter olabilir.",
+});
 
 export const idParamSchema = objectId;
 
@@ -58,7 +70,11 @@ export const updateWorkoutSchema = z.object({
 // --- Rutin ---
 
 export const createRoutineSchema = z.object({
-    routineName: z.string({ error: "Rutin adı gereklidir." }).trim().min(1, "Rutin adı boş olamaz.").max(60, "Rutin adı en fazla 60 karakter olabilir."),
+    routineName: cleanText(60, {
+        required: "Rutin adı gereklidir.",
+        empty: "Rutin adı boş olamaz.",
+        tooLong: "Rutin adı en fazla 60 karakter olabilir.",
+    }),
     splitType,
     exercises: z
         .array(
@@ -94,7 +110,11 @@ export const dailyGoalsSchema = z.object({
 // --- Kullanıcı ---
 
 export const updateProfileSchema = z.object({
-    name: z.string({ error: "İsim alanı boş bırakılamaz" }).trim().min(1, "İsim alanı boş bırakılamaz").max(60, "İsim en fazla 60 karakter olabilir."),
+    name: cleanText(60, {
+        required: "İsim alanı boş bırakılamaz",
+        empty: "İsim alanı boş bırakılamaz",
+        tooLong: "İsim en fazla 60 karakter olabilir.",
+    }),
     // Boş string / null "değiştirme" anlamına gelir. Base64 data URL (en fazla ~1.5MB) veya https URL kabul edilir.
     image: z
         .string()
@@ -106,7 +126,11 @@ export const updateProfileSchema = z.object({
 });
 
 export const registerSchema = z.object({
-    name: z.string({ error: "İsim gereklidir." }).trim().min(1, "İsim gereklidir.").max(60, "İsim en fazla 60 karakter olabilir."),
+    name: cleanText(60, {
+        required: "İsim gereklidir.",
+        empty: "İsim gereklidir.",
+        tooLong: "İsim en fazla 60 karakter olabilir.",
+    }),
     email: z.string({ error: "E-posta gereklidir." }).trim().toLowerCase().max(254).pipe(z.email("Geçerli bir e-posta giriniz.")),
     // bcrypt yalnızca ilk 72 byte'ı kullanır; daha uzun parolalar sessizce kırpılmasın.
     password: z.string({ error: "Şifre gereklidir." }).min(8, "Şifre en az 8 karakter olmalıdır.").max(72, "Şifre en fazla 72 karakter olabilir."),
@@ -125,4 +149,16 @@ export const macroRequestSchema = z.object({
     height: num("Boy", 80, 260),
     activityLevel: z.enum(ACTIVITY_LEVEL_IDS, { error: "Geçersiz aktivite seviyesi." }),
     goal: z.enum(MACRO_GOAL_IDS, { error: "Geçersiz hedef." }),
+});
+
+// --- Giriş ---
+
+/**
+ * Giriş formu. Biçim hataları da "geçersiz bilgi" olarak ele alınır (hangi alanın yanlış olduğu ele verilmez);
+ * bu yüzden şemada ayrıntılı mesaj yok. E-posta kayıttakiyle aynı biçimde normalize edilir.
+ */
+export const loginSchema = z.object({
+    email: z.string().trim().toLowerCase().min(1).max(254),
+    // Kayıt şeması 72 karakterden uzun parolayı zaten kabul etmez; daha uzunu doğrulanamaz, bcrypt'e hiç gitmesin.
+    password: z.string().min(1).max(72),
 });
