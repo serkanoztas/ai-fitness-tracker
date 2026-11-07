@@ -2,7 +2,8 @@ import { getServerSession } from "next-auth";
 import { Activity, Dumbbell, Scale, TrendingUp } from "lucide-react";
 import { authOptions } from "@/lib/authOptions";
 import { APP_TIME_ZONE } from "@/lib/constants";
-import { getDashboardData } from "@/lib/data/dashboard";
+import { getDashboardData, type DashboardData } from "@/lib/data/dashboard";
+import { RetryButton } from "@/components/dashboard/RetryButton";
 import { ActivityRing } from "@/components/dashboard/ActivityRing";
 import { AiCoach } from "@/components/dashboard/AiCoach";
 import { MetricTile } from "@/components/dashboard/MetricTile";
@@ -26,7 +27,19 @@ export default async function DashboardPage() {
     const session = await getServerSession(authOptions);
     // Oturum kontrolü middleware'de yapılır; burada yalnızca tip güvenliği için.
     const userId = session?.user?.id;
-    const data = userId ? await getDashboardData(userId) : null;
+
+    // Veri katmanı (örn. veritabanı bağlantısı) hata verirse sayfa çökmesin: Suspense sınırı bozulmadan
+    // boş durumla render edilir ve kullanıcıya yeniden deneme sunulur. Asıl hata sunucu logunda görünür.
+    let data: DashboardData | null = null;
+    let loadFailed = false;
+    if (userId) {
+        try {
+            data = await getDashboardData(userId);
+        } catch (err) {
+            console.error("Dashboard verisi yüklenemedi:", err);
+            loadFailed = true;
+        }
+    }
 
     const userName = session?.user?.name?.split(" ")[0] || "Şampiyon";
     const lastWorkout = data?.historicalData[data.historicalData.length - 1] ?? null;
@@ -39,6 +52,16 @@ export default async function DashboardPage() {
                 <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-white">{userName} 👋</h1>
                 <p className="mt-1 text-xs text-gray-400">Bugün hedeflerini ezmeye hazır mısın?</p>
             </header>
+
+            {loadFailed && (
+                <div
+                    role="alert"
+                    className="flex flex-col gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <p className="text-sm text-rose-300">Verilerin şu an yüklenemedi. Bağlantını kontrol edip tekrar deneyebilirsin.</p>
+                    <RetryButton />
+                </div>
+            )}
 
             <AiCoach />
 
