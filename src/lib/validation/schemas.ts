@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { WORKOUT_SPLITS } from "@/lib/constants";
+import {
+    ACTIVITY_LEVELS,
+    MACRO_GENDERS,
+    MACRO_GOALS,
+    WORKOUT_SPLITS,
+    type ActivityLevelId,
+    type MacroGoalId,
+} from "@/lib/constants";
 
 // --- Ortak yapı taşları ---
 
@@ -107,12 +114,15 @@ export const registerSchema = z.object({
 
 // --- AI ---
 
+// Seçenekler sabit listelerden gelir: serbest metin prompt'a girmez (prompt injection yüzeyi yok).
+const ACTIVITY_LEVEL_IDS = ACTIVITY_LEVELS.map((a) => a.id) as [ActivityLevelId, ...ActivityLevelId[]];
+const MACRO_GOAL_IDS = MACRO_GOALS.map((g) => g.id) as [MacroGoalId, ...MacroGoalId[]];
+
 export const macroRequestSchema = z.object({
     age: num("Yaş", 10, 100),
-    gender: z.enum(["Erkek", "Kadın"], { error: "Geçersiz cinsiyet." }),
+    gender: z.enum(MACRO_GENDERS, { error: "Geçersiz cinsiyet." }),
     weight: num("Kilo", 20, 400),
     height: num("Boy", 80, 260),
-    // Prompt'a girdiği için uzunluk sınırlı tutuluyor (prompt injection yüzeyini küçültür).
-    activityLevel: z.string({ error: "Aktivite seviyesi gereklidir." }).trim().min(1, "Aktivite seviyesi gereklidir.").max(100),
-    goal: z.string({ error: "Hedef gereklidir." }).trim().min(1, "Hedef gereklidir.").max(100),
+    activityLevel: z.enum(ACTIVITY_LEVEL_IDS, { error: "Geçersiz aktivite seviyesi." }),
+    goal: z.enum(MACRO_GOAL_IDS, { error: "Geçersiz hedef." }),
 });

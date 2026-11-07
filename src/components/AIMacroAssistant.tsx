@@ -4,24 +4,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Bot, X, Sparkles, Activity, Flame, Check, ChevronRight } from "lucide-react";
 import { apiRequest, getErrorMessage } from "@/lib/api/client";
+import { ACTIVITY_LEVELS, MACRO_GOALS } from "@/lib/constants";
 import type { MacroResultDTO } from "@/types/api";
-
-const ACTIVITY_LEVELS = [
-    { id: "sedanter", label: "Sedanter (Çok az/hiç egzersiz)" },
-    { id: "hafif", label: "Hafif (Haftada 1-3 gün)" },
-    { id: "ortalama", label: "Ortalama (Haftada 4-5 gün)" },
-    { id: "aktif", label: "Aktif (Hergün veya yoğun)" },
-    { id: "cok_aktif", label: "Çok Aktif (Haftada 6-7 çift idman)" },
-];
-
-const GOALS = [
-    { id: "koruma", label: "Kilo Korumak" },
-    { id: "hafif_kayip", label: "Hafif Kilo Kaybı (-0.25kg/hafta)" },
-    { id: "ortalama_kayip", label: "Ortalama Kilo Kaybı (-0.5kg/hafta)" },
-    { id: "asiri_kayip", label: "Hızlı Kilo Kaybı (-1kg/hafta)" },
-    { id: "hafif_kazanim", label: "Hafif Kilo Kazanımı (+0.25kg/hafta)" },
-    { id: "ortalama_kazanim", label: "Ortalama Kilo Kazanımı (+0.5kg/hafta)" },
-];
 
 export default function AIMacroAssistant() {
     const [isOpen, setIsOpen] = useState(false);
@@ -49,8 +33,8 @@ export default function AIMacroAssistant() {
                     weight: Number(formData.weight),
                     height: Number(formData.height),
                     gender: formData.gender,
-                    activityLevel: ACTIVITY_LEVELS.find(a => a.id === formData.activityLevel)?.label,
-                    goal: GOALS.find(g => g.id === formData.goal)?.label,
+                    activityLevel: formData.activityLevel,
+                    goal: formData.goal,
                 },
             });
             setResult(data);
@@ -149,7 +133,7 @@ export default function AIMacroAssistant() {
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-500 mb-1">Ana Hedef</label>
                                     <select value={formData.goal} onChange={e => setFormData({ ...formData, goal: e.target.value })} className="w-full p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                                        {GOALS.map(goal => (
+                                        {MACRO_GOALS.map(goal => (
                                             <option key={goal.id} value={goal.id}>{goal.label}</option>
                                         ))}
                                     </select>

@@ -1,58 +1,69 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { MACRO_COACH_SYSTEM_PROMPT, buildMacroAnalysisPrompt } from "@/lib/ai/prompt";
 import { ApiError, parseBody, withAuth } from "@/lib/api/handler";
+import { generateText } from "@/lib/ai/gemini";
+import { MIN_CALORIE_NOTICE, calculateMacros, fallbackAdvice } from "@/lib/ai/macro";
+import { MACRO_ADVICE_SYSTEM_PROMPT, buildMacroAdvicePrompt } from "@/lib/ai/prompt";
+import { ACTIVITY_LEVELS, MACRO_GOALS } from "@/lib/constants";
 import { macroRequestSchema } from "@/lib/validation/schemas";
 
-const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+const MAX_ADVICE_LENGTH = 300;
+const MAX_OUTPUT_TOKENS = 200;
 
-async function generateMacroJson(model: string, userPrompt: string): Promise<string> {
-    const generativeModel = genAI!.getGenerativeModel({
-        model,
-        systemInstruction: MACRO_COACH_SYSTEM_PROMPT,
-    });
-
-    const result = await generativeModel.generateContent({
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-        generationConfig: {
-            responseMimeType: "application/json", // JSON zorlaması
-            temperature: 0.1, // Matematiksel doğruluk için düşük sıcaklık
-        },
-    });
-    return result.response.text();
+/** Model çıktısını tek satırlık düz metne indirger (markdown/tırnak kalıntılarını temizler). */
+function cleanAdvice(text: string): string {
+    return text
+        .replace(/[*_`#>]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/^["“”']+|["“”']+$/g, "")
+        .slice(0, MAX_ADVICE_LENGTH);
 }
 
+// Sayılar deterministik hesaplanır; AI çökse bile hedefler ve (sabit) tavsiye döner.
 export const POST = withAuth(async ({ req }) => {
-    if (!genAI) {
-        throw new ApiError(500, "API anahtarı eksik.");
-    }
-
     const input = await parseBody(req, macroRequestSchema);
-    const userPrompt = buildMacroAnalysisPrompt(input);
 
-    let aiResponseText: string;
+    const result = calculateMacros({
+        age: input.age,
+        gender: input.gender,
+        weightKg: input.weight,
+        heightCm: input.height,
+        activityLevel: input.activityLevel,
+        goal: input.goal,
+    });
+
+    let advice = fallbackAdvice(input.goal);
     try {
-        // 1. Önce Ana Modeli Dene
-        aiResponseText = await generateMacroJson("gemini-3.5-flash-lite", userPrompt);
-    } catch (primaryError) {
-        console.warn("Ana model (3.5 Flash Lite) başarısız oldu, Fallback (2.5 Flash Lite) deneniyor...", primaryError);
-        try {
-            // 2. Fallback Modeli Dene
-            aiResponseText = await generateMacroJson("gemini-2.5-flash-lite", userPrompt);
-        } catch (fallbackError) {
-            console.error("AI Fallback de başarısız oldu:", fallbackError);
-            throw new ApiError(502, "AI analizi şu anda gerçekleştirilemiyor.");
+        const ai = await generateText({
+            systemInstruction: MACRO_ADVICE_SYSTEM_PROMPT,
+            prompt: buildMacroAdvicePrompt({
+                gender: input.gender,
+                age: input.age,
+                weightKg: input.weight,
+                goalLabel: MACRO_GOALS.find((g) => g.id === input.goal)?.label ?? input.goal,
+                activityLabel: ACTIVITY_LEVELS.find((a) => a.id === input.activityLevel)?.label ?? input.activityLevel,
+                result,
+            }),
+            maxOutputTokens: MAX_OUTPUT_TOKENS,
+            temperature: 0.7,
+        });
+        const cleaned = cleanAdvice(ai.text);
+        if (cleaned && !ai.truncated) advice = cleaned;
+    } catch (err) {
+        // Yapılandırma hatası (anahtar yok / yetki) dışında sessizce sabit tavsiyeye düşülür.
+        if (err instanceof ApiError && err.status === 500) {
+            console.error("AI Makro: yapılandırma hatası, sabit tavsiye kullanılıyor.", err.message);
+        } else {
+            console.warn("AI Makro: tavsiye üretilemedi, sabit tavsiye kullanılıyor.");
         }
     }
 
-    let macroData: unknown;
-    try {
-        macroData = JSON.parse(aiResponseText);
-    } catch {
-        console.error("AI geçersiz JSON döndü:", aiResponseText);
-        throw new ApiError(502, "AI geçersiz bir yanıt döndürdü, lütfen tekrar deneyin.");
+    if (result.flooredToMinimum) {
+        advice = `${advice} ${MIN_CALORIE_NOTICE(result.calories)}`;
     }
 
-    return NextResponse.json(macroData, { status: 200 });
+    return NextResponse.json(
+        { calories: result.calories, protein: result.protein, carbs: result.carbs, fat: result.fat, ai_advice: advice },
+        { status: 200 }
+    );
 }, "AI Macro Calculator", { db: false });

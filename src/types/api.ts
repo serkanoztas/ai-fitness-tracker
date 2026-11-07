@@ -50,5 +50,5 @@ export interface DailyGoalsDTO {
 
 /** /api/ai/macro cevabı */
 export interface MacroResultDTO extends DailyGoalsDTO {
-    ai_advice?: string;
+    ai_advice: string;
 }

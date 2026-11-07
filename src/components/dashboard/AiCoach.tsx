@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Activity, Bot, Zap } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { apiRequest, getErrorMessage } from "@/lib/api/client";
 
 /**
  * AI Koç kartı (buton) ve oluşan rapor. Fragment döndürür: kart, üstteki stat grid'inin 4. hücresi olur;
@@ -19,16 +20,10 @@ export function AiCoach() {
         setAnalysis(null);
 
         try {
-            const res = await fetch("/api/ai/analys");
-            const result = await res.json();
-
-            if (res.ok) {
-                setAnalysis(result.analysis);
-            } else {
-                setError(result.error || "Analiz alınırken bir hata oluştu.");
-            }
-        } catch {
-            setError("Sunucuya bağlanılamadı.");
+            const result = await apiRequest<{ analysis: string }>("/api/ai/analys", { method: "POST" });
+            setAnalysis(result.analysis);
+        } catch (err) {
+            setError(getErrorMessage(err, "Analiz alınırken bir hata oluştu."));
         } finally {
             setIsLoading(false);
         }

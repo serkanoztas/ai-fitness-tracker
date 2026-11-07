@@ -82,3 +82,26 @@ export interface IRoutine extends Document {
     createdAt: Date;
     updatedAt: Date;
 }
+
+// --- Lean (düz nesne) sorgu sonuçları: populate("exercises.exercise", "name muscleGroup") sonrası ---
+
+export interface LeanExercise {
+    _id: Types.ObjectId;
+    name: string;
+    muscleGroup: MuscleGroup;
+}
+
+export interface LeanWorkoutExercise {
+    /** Egzersiz silinmişse populate sonucu null olur */
+    exercise: LeanExercise | null;
+    sets: ISet[];
+    exerciseVolume: number;
+}
+
+export interface LeanWorkout {
+    _id: Types.ObjectId;
+    date: Date;
+    splitType: WorkoutSplit;
+    totalVolume: number;
+    exercises: LeanWorkoutExercise[];
+}
