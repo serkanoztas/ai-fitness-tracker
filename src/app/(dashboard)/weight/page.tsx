@@ -12,6 +12,7 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from "recharts";
+import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "@/components/dashboard/chart-theme";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingRegion, Skeleton } from "@/components/ui/Skeleton";
 import { useApiQuery } from "@/hooks/useApiQuery";
@@ -122,7 +123,7 @@ export default function WeightPage() {
                             {previousWeight && (
                                 <div className="flex justify-between items-center mt-2 text-sm">
                                     <span className="text-gray-500">Değişim:</span>
-                                    <div className={`flex items-center gap-1 font-semibold ${diff > 0 ? "text-blue-500" : diff < 0 ? "text-emerald-500" : "text-gray-500"
+                                    <div className={`flex items-center gap-1 font-semibold ${diff > 0 ? "text-brand-500" : diff < 0 ? "text-emerald-500" : "text-gray-500"
                                         }`}>
                                         {diff > 0 ? <TrendingUp className="w-4 h-4" /> : diff < 0 ? <TrendingDown className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
                                         {diff > 0 ? "+" : ""}{diff} kg
@@ -173,9 +174,9 @@ export default function WeightPage() {
                                         tick={{ fontSize: 12, fill: '#6B7280' }}
                                     />
                                     <Tooltip
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        labelStyle={{ color: '#6B7280', marginBottom: '4px' }}
-                                        itemStyle={{ color: '#059669', fontWeight: 'bold' }}
+                                        contentStyle={CHART_TOOLTIP_STYLE}
+                                        labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                                        itemStyle={{ color: '#34d399', fontWeight: 'bold' }}
                                         cursor={{ stroke: '#9CA3AF', strokeWidth: 1, strokeDasharray: '3 3' }}
                                     />
                                     <Line
@@ -184,7 +185,7 @@ export default function WeightPage() {
                                         name="Kilo"
                                         stroke="#10B981"
                                         strokeWidth={3}
-                                        dot={{ r: 4, strokeWidth: 2, fill: "#fff" }}
+                                        dot={{ r: 4, strokeWidth: 2, fill: "#14151C", stroke: "#10B981" }}
                                         activeDot={{ r: 6, strokeWidth: 0, fill: "#10B981" }}
                                     />
                                 </LineChart>

@@ -60,7 +60,7 @@ export function Modal({ onClose, labelledBy, describedBy, children }: ModalProps
                 if (e.target === e.currentTarget && pressStartedOnBackdrop.current) onClose();
             }}
             // Tailwind preflight margin'i sıfırladığı için m-auto ile ortalanır
-            className="m-auto w-[calc(100%-2rem)] max-w-md overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/70 p-0 text-zinc-100 shadow-2xl shadow-black/50 backdrop-blur-md backdrop:bg-black/60 backdrop:backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200"
+            className="m-auto w-[calc(100%-2rem)] max-w-md overflow-hidden rounded-3xl border border-line bg-surface/85 p-0 text-white shadow-2xl shadow-black/60 backdrop-blur-xl backdrop:bg-black/60 backdrop:backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200"
         >
             {children}
         </dialog>
@@ -69,10 +69,10 @@ export function Modal({ onClose, labelledBy, describedBy, children }: ModalProps
 
 /** Modal içinde ortak kullanılan buton sınıfları */
 export const MODAL_BUTTON_BASE =
-    "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 disabled:opacity-60 disabled:pointer-events-none";
+    "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 disabled:opacity-60 disabled:pointer-events-none";
 
-export const MODAL_CANCEL_BUTTON = `${MODAL_BUTTON_BASE} border border-zinc-700/80 bg-zinc-800/60 text-zinc-200 hover:border-zinc-600 hover:bg-zinc-800`;
+export const MODAL_CANCEL_BUTTON = `${MODAL_BUTTON_BASE} border border-line bg-surface-raised text-gray-200 hover:border-gray-600 hover:bg-gray-700`;
 
-export const MODAL_CONFIRM_BUTTON = `${MODAL_BUTTON_BASE} bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-900/30 hover:from-violet-500 hover:to-indigo-500`;
+export const MODAL_CONFIRM_BUTTON = `${MODAL_BUTTON_BASE} bg-gradient-coral text-white shadow-glow-sm hover:brightness-110`;
 
-export const MODAL_DANGER_BUTTON = `${MODAL_BUTTON_BASE} bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-lg shadow-rose-900/30 hover:from-rose-500 hover:to-red-500 focus-visible:ring-rose-500/50`;
+export const MODAL_DANGER_BUTTON = `${MODAL_BUTTON_BASE} bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-[0_0_14px_rgba(244,63,94,0.35)] hover:brightness-110 focus-visible:ring-rose-500/50`;

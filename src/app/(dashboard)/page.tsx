@@ -1,14 +1,25 @@
-import Link from "next/link";
 import { getServerSession } from "next-auth";
-import { Activity, Flame, Scale, TrendingUp, Dumbbell } from "lucide-react";
+import { Activity, Dumbbell, Scale, TrendingUp } from "lucide-react";
 import { authOptions } from "@/lib/authOptions";
+import { APP_TIME_ZONE } from "@/lib/constants";
 import { getDashboardData } from "@/lib/data/dashboard";
+import { ActivityRing } from "@/components/dashboard/ActivityRing";
 import { AiCoach } from "@/components/dashboard/AiCoach";
+import { MetricTile } from "@/components/dashboard/MetricTile";
 import { MotivationCard } from "@/components/dashboard/MotivationCard";
+import { RecentWorkouts } from "@/components/dashboard/RecentWorkouts";
 import { VolumeChart } from "@/components/dashboard/VolumeChart";
+import { EmptyState } from "@/components/ui/EmptyState";
 
-const CARD_CLASS =
-    "bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow group";
+function greetingFor(date: Date): string {
+    const hour = Number(
+        new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: APP_TIME_ZONE }).format(date)
+    );
+    if (hour < 5) return "İyi geceler";
+    if (hour < 12) return "Günaydın";
+    if (hour < 18) return "İyi günler";
+    return "İyi akşamlar";
+}
 
 // Server Component: veri sunucuda çekilir, HTML hazır gelir (spinner / fetch waterfall yok).
 export default async function DashboardPage() {
@@ -18,101 +29,84 @@ export default async function DashboardPage() {
     const data = userId ? await getDashboardData(userId) : null;
 
     const userName = session?.user?.name?.split(" ")[0] || "Şampiyon";
+    const lastWorkout = data?.historicalData[data.historicalData.length - 1] ?? null;
 
     return (
-        <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-8">
-            {/* Hoş Geldin Mesajı */}
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Merhaba, {userName} 👋</h1>
-                <p className="text-gray-500 dark:text-gray-400 mt-1">Bugün sınırlarını zorlamak için harika bir gün.</p>
-            </div>
+        <div className="mx-auto max-w-6xl space-y-6 px-5 pb-6 pt-6 md:px-8 md:pt-8">
+            {/* Karşılama */}
+            <header>
+                <p className="text-xs font-medium text-gray-400">{greetingFor(new Date())},</p>
+                <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-white">{userName} 👋</h1>
+                <p className="mt-1 text-xs text-gray-400">Bugün hedeflerini ezmeye hazır mısın?</p>
+            </header>
 
-            {/* 1. BÖLÜM: İstatistik Kartları + AI Koç */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-                {/* Antrenman Hacmi Kartı */}
-                <Link href="/workout/history" className={CARD_CLASS}>
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl group-hover:scale-110 transition-transform">
-                            <Dumbbell className="w-6 h-6" />
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">Toplam Hacim</h3>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-black text-gray-900 dark:text-white">
-                                {(data?.totalVolume ?? 0).toLocaleString("tr-TR")}
-                            </span>
-                            <span className="text-sm font-bold text-gray-400">kg</span>
-                        </div>
-                        <p className="text-xs text-emerald-500 mt-2 flex items-center gap-1 font-medium">
-                            <TrendingUp className="w-3 h-3" /> {data?.totalWorkouts ?? 0} Antrenman
-                        </p>
-                    </div>
-                </Link>
+            <AiCoach />
 
-                {/* Kalori Kartı */}
-                <Link href="/nutrition" className={CARD_CLASS}>
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="p-3 bg-orange-50 dark:bg-orange-900/30 text-orange-500 rounded-xl group-hover:scale-110 transition-transform">
-                            <Flame className="w-6 h-6" />
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">Günlük Kalori</h3>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-black text-gray-900 dark:text-white">
-                                {data?.latestNutrition?.calories ?? 0}
-                            </span>
-                            <span className="text-sm font-bold text-gray-400">kcal</span>
-                        </div>
-                        {data?.latestNutrition ? (
-                            <div className="flex items-center gap-3 mt-2 text-xs font-semibold text-gray-500">
-                                <span className="text-blue-500">{data.latestNutrition.protein}g P</span>
-                                <span className="text-yellow-500">{data.latestNutrition.carbs}g K</span>
-                                <span className="text-red-500">{data.latestNutrition.fat}g Y</span>
-                            </div>
-                        ) : (
-                            <p className="text-xs text-gray-400 mt-2 font-medium">Veri girilmedi</p>
-                        )}
-                    </div>
-                </Link>
-
-                {/* Kilo Kartı */}
-                <Link href="/weight" className={CARD_CLASS}>
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 rounded-xl group-hover:scale-110 transition-transform">
-                            <Scale className="w-6 h-6" />
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">Vücut Ağırlığı</h3>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-black text-gray-900 dark:text-white">{data?.latestWeight ?? "-"}</span>
-                            <span className="text-sm font-bold text-gray-400">kg</span>
-                        </div>
-                        <p className="text-xs text-gray-400 mt-2 font-medium">Son güncel kilonuz</p>
-                    </div>
-                </Link>
-
-                {/* AI Asistan Kartı + (oluşunca) rapor */}
-                <AiCoach />
-            </div>
-
-            {/* 2. BÖLÜM: Grafik ve Motivasyon */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6">Antrenman Hacmi Trendi</h3>
-
-                    {!data || data.historicalData.length === 0 ? (
-                        <div className="h-72 flex flex-col items-center justify-center text-gray-400">
-                            <Activity className="w-8 h-8 mb-2 opacity-50" />
-                            <p>Grafik için henüz antrenman verisi yok.</p>
-                        </div>
-                    ) : (
-                        <VolumeChart data={data.historicalData} />
-                    )}
+            {/* Günlük özet: dairesel kalori göstergesi + yan metrikler */}
+            <section aria-label="Özet" className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                <div className="lg:col-span-7">
+                    <ActivityRing latestNutrition={data?.latestNutrition ?? null} />
                 </div>
 
+                <div className="flex flex-col gap-3 lg:col-span-5 lg:justify-between">
+                    <MetricTile
+                        href="/workout/history"
+                        icon={Dumbbell}
+                        tone="brand"
+                        label="Toplam Hacim"
+                        value={(data?.totalVolume ?? 0).toLocaleString("tr-TR")}
+                        unit="kg"
+                        hint={`${data?.totalWorkouts ?? 0} antrenman`}
+                    />
+                    <MetricTile
+                        href="/workout/history"
+                        icon={TrendingUp}
+                        tone="orange"
+                        label="Son Antrenman"
+                        value={lastWorkout ? lastWorkout.volume.toLocaleString("tr-TR") : "-"}
+                        unit={lastWorkout ? "kg" : undefined}
+                        hint={lastWorkout ? lastWorkout.date : "Henüz kayıt yok"}
+                    />
+                    <MetricTile
+                        href="/weight"
+                        icon={Scale}
+                        tone="emerald"
+                        label="Vücut Ağırlığı"
+                        value={data?.latestWeight != null ? String(data.latestWeight) : "-"}
+                        unit={data?.latestWeight != null ? "kg" : undefined}
+                        hint={data?.latestWeight != null ? "Son güncel kilon" : "Henüz kilo girilmedi"}
+                    />
+                </div>
+            </section>
+
+            {/* Hacim trendi */}
+            <section aria-labelledby="volume-trend-title" className="rounded-3xl border border-line bg-surface p-5 shadow-lg shadow-black/30">
+                <div className="mb-2 flex items-center justify-between">
+                    <h2 id="volume-trend-title" className="text-sm font-semibold tracking-tight text-gray-200">
+                        Antrenman Hacmi Trendi
+                    </h2>
+                    <span className="rounded-full border border-brand-500/30 bg-brand-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-brand-400">
+                        Son 30 antrenman
+                    </span>
+                </div>
+
+                {!data || data.historicalData.length === 0 ? (
+                    <EmptyState
+                        bare
+                        icon={Activity}
+                        title="Grafik için henüz veri yok"
+                        description="İlk antrenmanını kaydettiğinde hacim trendin burada belirecek."
+                        action={{ label: "Antrenman kaydet", href: "/workout/new" }}
+                    />
+                ) : (
+                    <VolumeChart data={data.historicalData} />
+                )}
+            </section>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-2">
+                    <RecentWorkouts />
+                </div>
                 <MotivationCard />
             </div>
         </div>

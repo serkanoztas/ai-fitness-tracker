@@ -367,7 +367,7 @@ function WorkoutForm() {
     return (
         <div className="max-w-3xl mx-auto p-4 md:p-6 pb-24">
             <div className="flex items-center gap-3 mb-8">
-                <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl">
+                <div className="p-3 bg-brand-500/10 text-brand-500 rounded-xl">
                     <Dumbbell className="w-6 h-6" />
                 </div>
                 <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Yeni Antrenman</h1>
@@ -376,7 +376,7 @@ function WorkoutForm() {
             {/* Kayıtlı Şablonlarım Alanı */}
             <div className="mb-6">
                 <div className="flex items-center gap-2 mb-3 text-gray-700 dark:text-gray-300 font-semibold">
-                    <LibraryBig className="w-5 h-5 text-indigo-500" />
+                    <LibraryBig className="w-5 h-5 text-coral-500" />
                     <h2>Şablonlarım</h2>
                 </div>
 
@@ -395,18 +395,18 @@ function WorkoutForm() {
                         className="py-8"
                     />
                 ) : (
-                    <div className="flex overflow-x-auto pb-2 gap-3 custom-scrollbar">
+                    <div className="flex overflow-x-auto pb-2 gap-3 no-scrollbar">
                         {routines.map((routine) => (
                             <div
                                 key={routine._id}
-                                className="group relative flex-shrink-0 min-w-[140px] rounded-xl border border-indigo-100 bg-white shadow-sm transition-all duration-200 hover:border-indigo-300 dark:border-indigo-900 dark:bg-gray-800 dark:hover:border-indigo-700"
+                                className="group relative flex-shrink-0 min-w-[140px] rounded-xl border border-coral-100 bg-white shadow-sm transition-all duration-200 hover:border-coral-300 dark:border-coral-900 dark:bg-gray-800 dark:hover:border-coral-700"
                             >
                                 <button
                                     type="button"
                                     onClick={() => loadRoutine(routine)}
-                                    className="flex w-full flex-col rounded-xl py-3 pl-4 pr-10 text-left transition-all duration-200 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50"
+                                    className="flex w-full flex-col rounded-xl py-3 pl-4 pr-10 text-left transition-all duration-200 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
                                 >
-                                    <span className="text-sm font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                    <span className="text-sm font-bold text-gray-800 dark:text-gray-100 group-hover:text-coral-600 dark:group-hover:text-coral-400 transition-colors">
                                         {routine.routineName}
                                     </span>
                                     <span className="text-xs text-gray-500 mt-1">
@@ -442,7 +442,7 @@ function WorkoutForm() {
                                 type="button"
                                 onClick={() => setSplitType(type)}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${splitType === type
-                                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                                    ? "bg-gradient-coral text-white shadow-md shadow-brand-500/20"
                                     : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                                     }`}
                             >
@@ -479,7 +479,7 @@ function WorkoutForm() {
                     <button
                         type="button"
                         onClick={addExercise}
-                        className="w-full sm:flex-1 py-3.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
+                        className="w-full sm:flex-1 py-3.5 bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-brand-100 dark:hover:bg-brand-500/20 transition-colors"
                     >
                         <Plus className="w-5 h-5" /> Egzersiz
                     </button>
@@ -489,7 +489,7 @@ function WorkoutForm() {
                         type="button"
                         onClick={saveAsRoutine}
                         disabled={isSavingRoutine}
-                        className="w-full sm:flex-1 py-3.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors disabled:opacity-70"
+                        className="w-full sm:flex-1 py-3.5 bg-coral-50 dark:bg-coral-500/10 text-coral-600 dark:text-coral-400 font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-coral-100 dark:hover:bg-coral-500/20 transition-colors disabled:opacity-70"
                     >
                         {isSavingRoutine ? <Loader2 className="w-5 h-5 animate-spin" /> : <BookmarkPlus className="w-5 h-5" />}
                         Şablon Yap
@@ -499,7 +499,7 @@ function WorkoutForm() {
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full sm:flex-[2] py-3.5 bg-blue-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors disabled:opacity-70 shadow-md shadow-blue-500/20"
+                        className="w-full sm:flex-[2] py-3.5 bg-gradient-coral text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:brightness-110 transition-colors disabled:opacity-70 shadow-md shadow-brand-500/20"
                     >
                         {isSubmitting ? (
                             <>
@@ -541,7 +541,7 @@ function ExerciseCard({ exercise, isLoadingExercises, onNameChange, onRemove, on
                         onChange={(e) => onNameChange(exercise.id, e.target.value)}
                         placeholder={isLoadingExercises ? "Yükleniyor..." : "Egzersiz seçin veya yazın..."}
                         maxLength={80}
-                        className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3 outline-none font-semibold transition-all"
+                        className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 block w-full p-3 outline-none font-semibold transition-all"
                         required
                     />
                 </div>
@@ -567,7 +567,7 @@ function ExerciseCard({ exercise, isLoadingExercises, onNameChange, onRemove, on
 
                 {exercise.sets.map((set, setIndex) => (
                     <div key={set.id} className="grid grid-cols-12 gap-2 items-center group">
-                        <div className="col-span-2 text-center text-sm font-bold text-gray-400 group-hover:text-blue-500 transition-colors">
+                        <div className="col-span-2 text-center text-sm font-bold text-gray-400 group-hover:text-brand-500 transition-colors">
                             {setIndex + 1}
                         </div>
                         <div className="col-span-4">
@@ -576,7 +576,7 @@ function ExerciseCard({ exercise, isLoadingExercises, onNameChange, onRemove, on
                                 value={set.weight}
                                 onChange={(e) => onUpdateSet(exercise.id, set.id, "weight", e.target.value)}
                                 placeholder="0"
-                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-center text-gray-900 dark:text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-center text-gray-900 dark:text-white font-semibold focus:ring-2 focus:ring-brand-500 outline-none"
                                 required
                                 min="0"
                                 step="0.5"
@@ -588,7 +588,7 @@ function ExerciseCard({ exercise, isLoadingExercises, onNameChange, onRemove, on
                                 value={set.reps}
                                 onChange={(e) => onUpdateSet(exercise.id, set.id, "reps", e.target.value)}
                                 placeholder="0"
-                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-center text-gray-900 dark:text-white font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 text-center text-gray-900 dark:text-white font-semibold focus:ring-2 focus:ring-brand-500 outline-none"
                                 required
                                 min="1"
                             />

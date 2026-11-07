@@ -1,4 +1,4 @@
-import { Dumbbell } from "lucide-react";
+import { Activity } from "lucide-react";
 import AIMacroAssistant from "@/components/AIMacroAssistant";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { SidebarUser } from "@/components/layout/SidebarUser";
@@ -7,16 +7,14 @@ import { MobileNav } from "@/components/layout/MobileNav";
 // Server Component: statik iskelet sunucuda render edilir, yalnızca etkileşimli parçalar (client) hydrate olur.
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+        <div className="min-h-screen bg-canvas text-white">
             {/* DESKTOP SIDEBAR */}
-            <aside className="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 z-50 shadow-sm">
-                <div className="p-6 flex items-center gap-3">
-                    <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl text-white shadow-md">
-                        <Dumbbell className="w-6 h-6" />
+            <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-line bg-surface/80 backdrop-blur-xl md:flex">
+                <div className="flex items-center gap-3 p-6">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-coral text-white shadow-glow-sm" aria-hidden="true">
+                        <Activity className="h-6 w-6 stroke-[2.5px]" />
                     </div>
-                    <span className="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 tracking-tight">
-                        AI Fitness
-                    </span>
+                    <span className="text-base font-black tracking-[0.18em] text-white">AI FITNESS</span>
                 </div>
 
                 <SidebarNav />
@@ -26,9 +24,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <MobileNav />
 
             {/* MAIN CONTENT AREA */}
-            <main className="md:pl-64 pb-24 md:pb-6 min-h-screen transition-all duration-300 ease-in-out">
-                {children}
-            </main>
+            <main className="min-h-screen pb-28 md:pb-8 md:pl-64">{children}</main>
             <AIMacroAssistant />
         </div>
     );

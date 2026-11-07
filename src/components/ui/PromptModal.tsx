@@ -22,7 +22,7 @@ export interface PromptModalProps {
 }
 
 const INPUT_CLASS =
-    "w-full rounded-xl border bg-zinc-950/60 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all duration-200 focus:ring-2";
+    "w-full rounded-xl border bg-canvas/70 px-4 py-3 text-sm text-white placeholder:text-gray-500 outline-none transition-all duration-200 focus:ring-2";
 
 /** window.prompt() yerine geçen metin girdi penceresi. */
 export function PromptModal(props: PromptModalProps) {
@@ -72,16 +72,16 @@ function PromptModalContent({
                 <div className="flex items-start gap-4">
                     <div
                         aria-hidden="true"
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-400"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand-500/30 bg-brand-500/10 text-brand-400"
                     >
                         <PencilLine className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                        <h2 id={titleId} className="text-lg font-semibold tracking-tight text-zinc-100">
+                        <h2 id={titleId} className="text-lg font-semibold tracking-tight text-white">
                             {title}
                         </h2>
                         {description && (
-                            <p id={descriptionId} className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+                            <p id={descriptionId} className="mt-1.5 text-sm leading-relaxed text-gray-400">
                                 {description}
                             </p>
                         )}
@@ -89,7 +89,7 @@ function PromptModalContent({
                 </div>
 
                 <div className="mt-5">
-                    <label htmlFor={inputId} className="mb-2 block text-xs font-medium text-zinc-400">
+                    <label htmlFor={inputId} className="mb-2 block text-xs font-medium text-gray-400">
                         {label}
                     </label>
                     <input
@@ -110,14 +110,14 @@ function PromptModalContent({
                         className={`${INPUT_CLASS} ${
                             error
                                 ? "border-rose-500/60 focus:border-rose-500/60 focus:ring-rose-500/40"
-                                : "border-zinc-800/80 focus:border-violet-500/60 focus:ring-violet-500/50"
+                                : "border-line focus:border-brand-500/60 focus:ring-brand-500/50"
                         }`}
                     />
                     <div className="mt-1.5 flex items-start justify-between gap-3 text-xs">
                         <p id={errorId} role="alert" className="text-rose-400">
                             {error}
                         </p>
-                        <span className="shrink-0 text-zinc-500">
+                        <span className="shrink-0 text-gray-500">
                             {value.length}/{maxLength}
                         </span>
                     </div>

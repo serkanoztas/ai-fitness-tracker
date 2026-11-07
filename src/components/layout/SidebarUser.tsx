@@ -17,29 +17,36 @@ export function SidebarUser() {
     const userInitial = userName.charAt(0).toUpperCase();
 
     return (
-        <div className="p-4 m-4 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700">
+        <div className="m-4 rounded-2xl border border-line bg-canvas/50 p-4 shadow-inner-glow">
             <div className="flex items-center justify-between">
-                <Link href="/profile" className="flex items-center gap-3 overflow-hidden group flex-1 mr-2 cursor-pointer">
+                <Link
+                    href="/profile"
+                    className="group mr-2 flex flex-1 cursor-pointer items-center gap-3 overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
+                >
                     {image ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={image} alt={userName} className="w-10 h-10 shrink-0 rounded-full object-cover border border-blue-200 dark:border-blue-800" />
+                        <img src={image} alt="" className="h-10 w-10 shrink-0 rounded-full border-2 border-line object-cover" />
                     ) : (
-                        <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold border border-blue-200 dark:border-blue-800">
+                        <div
+                            aria-hidden="true"
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-line bg-gradient-coral font-bold text-white"
+                        >
                             {userInitial}
                         </div>
                     )}
-                    <div className="text-sm overflow-hidden group-hover:opacity-80 transition-opacity">
-                        <p className="font-bold truncate text-gray-900 dark:text-white">{userName}</p>
-                        <p className="text-xs text-blue-500 font-medium truncate">Profili Düzenle</p>
+                    <div className="overflow-hidden text-sm transition-opacity group-hover:opacity-80">
+                        <p className="truncate font-bold text-white">{userName}</p>
+                        <p className="truncate text-xs font-medium text-brand-400">Profili Düzenle</p>
                     </div>
                 </Link>
 
                 <button
                     onClick={() => signOut({ callbackUrl: "/login" })}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors shrink-0"
+                    className="shrink-0 rounded-lg p-2 text-gray-400 transition-all duration-200 hover:bg-rose-500/10 hover:text-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/50 active:scale-95"
                     title="Çıkış Yap"
+                    aria-label="Çıkış yap"
                 >
-                    <LogOut className="w-5 h-5" />
+                    <LogOut className="h-5 w-5" />
                 </button>
             </div>
         </div>

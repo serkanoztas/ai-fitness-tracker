@@ -84,7 +84,7 @@ export default function ProfilePage() {
     return (
         <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-8">
             <div className="flex items-center gap-3 mb-8">
-                <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl">
+                <div className="p-3 bg-brand-500/10 text-brand-500 rounded-xl">
                     <User className="w-6 h-6" />
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -107,7 +107,7 @@ export default function ProfilePage() {
                                     className="w-32 h-32 rounded-full object-cover border-4 border-gray-50 dark:border-gray-900 shadow-md group-hover:opacity-75 transition-opacity"
                                 />
                             ) : (
-                                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-4xl border-4 border-gray-50 dark:border-gray-900 shadow-md group-hover:opacity-75 transition-opacity">
+                                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-brand-100 to-coral-100 dark:from-brand-900/50 dark:to-coral-900/50 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-4xl border-4 border-gray-50 dark:border-gray-900 shadow-md group-hover:opacity-75 transition-opacity">
                                     {userInitial}
                                 </div>
                             )}
@@ -118,7 +118,7 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Sağ Alt Köşe İkonu */}
-                            <div className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full border-2 border-white dark:border-gray-800 shadow-sm">
+                            <div className="absolute bottom-0 right-0 bg-gradient-coral text-white p-2 rounded-full border-2 border-white dark:border-gray-800 shadow-sm">
                                 <ImagePlus className="w-4 h-4" />
                             </div>
                         </div>
@@ -146,7 +146,7 @@ export default function ProfilePage() {
                                 type="text"
                                 value={name}
                                 onChange={(e) => setNameInput(e.target.value)}
-                                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-3.5 outline-none transition-all"
+                                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-xl focus:ring-brand-500 focus:border-brand-500 block w-full pl-10 p-3.5 outline-none transition-all"
                                 placeholder="Adınız Soyadınız"
                                 required
                             />
@@ -157,7 +157,7 @@ export default function ProfilePage() {
                     <button
                         type="submit"
                         disabled={isSubmitting || !name}
-                        className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed shadow-sm"
+                        className="w-full py-3.5 bg-gradient-coral text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:brightness-110 transition-colors disabled:opacity-70 disabled:cursor-not-allowed shadow-sm"
                     >
                         {isSubmitting ? (
                             <><Loader2 className="w-5 h-5 animate-spin" /> Kaydediliyor...</>

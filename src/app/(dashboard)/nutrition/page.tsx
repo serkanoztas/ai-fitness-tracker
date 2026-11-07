@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Flame, Save, Activity, Droplet, Wheat, Utensils, Trash, TrendingUp } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
+import { CHART_TOOLTIP_LABEL_STYLE, CHART_TOOLTIP_STYLE } from "@/components/dashboard/chart-theme";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useDialogs } from "@/components/ui/DialogProvider";
 import { LoadingRegion, Skeleton } from "@/components/ui/Skeleton";
@@ -146,14 +147,14 @@ export default function NutritionPage() {
                         <div className="grid grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
-                                    <Activity className="w-3 h-3 text-blue-500" /> Protein
+                                    <Activity className="w-3 h-3 text-brand-500" /> Protein
                                 </label>
                                 <div className="relative">
                                     <input
                                         type="number"
                                         value={formData.protein}
                                         onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
-                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-lg font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-lg font-bold focus:ring-2 focus:ring-brand-500 outline-none"
                                         placeholder="150"
                                     />
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">g</span>
@@ -259,8 +260,8 @@ export default function NutritionPage() {
                                             ))}
                                         </Pie>
                                         <Tooltip
-                                            itemStyle={{ color: '#111827', fontWeight: 'bold' }}
-                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                            itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                                            contentStyle={CHART_TOOLTIP_STYLE}
                                         />
                                     </PieChart>
                                 </ResponsiveContainer>
@@ -320,8 +321,9 @@ export default function NutritionPage() {
                                 <XAxis dataKey="tarih" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} dy={10} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
                                 <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    contentStyle={CHART_TOOLTIP_STYLE}
                                     itemStyle={{ color: '#f97316', fontWeight: 'bold' }}
+                                    labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                                 />
                                 <Area
                                     type="monotone"

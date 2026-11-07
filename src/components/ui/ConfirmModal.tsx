@@ -44,17 +44,17 @@ export function ConfirmModal({
                         className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
                             isDanger
                                 ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
-                                : "border-violet-500/30 bg-violet-500/10 text-violet-400"
+                                : "border-brand-500/30 bg-brand-500/10 text-brand-400"
                         }`}
                     >
                         <Icon className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                        <h2 id={titleId} className="text-lg font-semibold tracking-tight text-zinc-100">
+                        <h2 id={titleId} className="text-lg font-semibold tracking-tight text-white">
                             {title}
                         </h2>
                         {description && (
-                            <p id={descriptionId} className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+                            <p id={descriptionId} className="mt-1.5 text-sm leading-relaxed text-gray-400">
                                 {description}
                             </p>
                         )}

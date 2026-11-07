@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 
 /**
- * Yükleme iskeleti (design-system.md: animate-pulse bg-zinc-800/60 rounded-xl).
- * Açık temada koyu blok ağır durduğu için açık renk karşılığı kullanılır; koyu tema birebir spesifikasyondur.
+ * Yükleme iskeleti: koyu yüzey üzerinde nabız animasyonlu blok (animate-pulse rounded-xl).
  */
 export function Skeleton({ className = "" }: { className?: string }) {
-    return <div aria-hidden="true" className={`animate-pulse rounded-xl bg-zinc-200/80 dark:bg-zinc-800/60 ${className}`} />;
+    return <div aria-hidden="true" className={`animate-pulse rounded-xl bg-surface-raised ${className}`} />;
 }
 
 /**

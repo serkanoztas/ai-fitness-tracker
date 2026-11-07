@@ -48,16 +48,16 @@ export function MotivationCard() {
     const { title, text, icon: Icon } = MOTIVATIONS[index];
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center text-center">
+        <section aria-label="Motivasyon" className="flex flex-col justify-center rounded-3xl border border-line bg-surface p-6 text-center shadow-inner-glow">
             {/* key sayesinde ikon ve yazı aynı anda fade in/out animasyonuna girer */}
-            <div key={index} className="animate-in fade-in zoom-in duration-500">
-                <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/30 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-10 h-10" />
+            <div key={index} className="animate-in fade-in zoom-in-95 duration-500">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-brand-500/30 bg-brand-500/10 text-brand-400 shadow-glow-sm">
+                    <Icon className="h-8 w-8" aria-hidden="true" />
                 </div>
 
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
-                <p className="text-gray-500 dark:text-gray-400 text-sm h-16 flex items-center justify-center">{text}</p>
+                <h3 className="mb-2 text-lg font-bold tracking-tight text-white">{title}</h3>
+                <p className="flex h-16 items-center justify-center text-sm text-gray-400">{text}</p>
             </div>
-        </div>
+        </section>
     );
 }
