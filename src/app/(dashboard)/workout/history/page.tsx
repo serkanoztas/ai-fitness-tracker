@@ -5,10 +5,11 @@ import { toast } from "sonner";
 import { CalendarDays, Trophy, Dumbbell, Activity, Search, History, Trash, Edit2, X } from "lucide-react";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { apiRequest, getErrorMessage } from "@/lib/api/client";
+import { WORKOUT_SPLITS } from "@/lib/constants";
 import type { WorkoutSplit } from "@/types";
 import type { WorkoutDTO, WorkoutExerciseDTO } from "@/types/api";
 
-const SPLIT_TYPES = ["Upper", "Lower", "Push", "Pull", "Legs", "FullBody", "Arms", "Other"];
+const SPLIT_TYPES: readonly string[] = WORKOUT_SPLITS;
 
 export default function HistoryPage() {
     const { data: workouts, setData: setWorkouts, isLoading, error } = useApiQuery<WorkoutDTO[]>("/api/workouts", []);

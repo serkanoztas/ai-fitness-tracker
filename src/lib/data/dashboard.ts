@@ -1,6 +1,11 @@
+import { Types } from "mongoose";
 import { connectToDatabase } from "@/lib/db/connect";
 import { Workout } from "@/models/Workout";
-import { User } from "@/models/User";
+import { WeightLog } from "@/models/WeightLog";
+import { NutritionLog } from "@/models/NutritionLog";
+
+/** Dashboard hacim grafiğinde gösterilen son antrenman sayısı */
+const CHART_WORKOUT_COUNT = 30;
 
 export interface DashboardData {
     totalVolume: number;
@@ -15,23 +20,30 @@ export interface DashboardData {
 export async function getDashboardData(userId: string): Promise<DashboardData> {
     await connectToDatabase();
 
-    const [workouts, user] = await Promise.all([
-        Workout.find({ user: userId }).select("date totalVolume").sort({ date: 1 }).lean(),
-        User.findById(userId).select("weightLogs nutritionLogs").lean(),
+    const [totals, recentWorkouts, lastWeight, lastNutrition] = await Promise.all([
+        // Toplamlar veritabanında hesaplanır; tüm antrenmanlar belleğe çekilmez.
+        Workout.aggregate<{ totalVolume: number; count: number }>([
+            { $match: { user: new Types.ObjectId(userId) } },
+            { $group: { _id: null, totalVolume: { $sum: "$totalVolume" }, count: { $sum: 1 } } },
+        ]),
+        Workout.find({ user: userId }).select("date totalVolume").sort({ date: -1 }).limit(CHART_WORKOUT_COUNT).lean(),
+        WeightLog.findOne({ user: userId }).sort({ date: -1 }).select("weight").lean(),
+        NutritionLog.findOne({ user: userId }).sort({ date: -1 }).select("calories protein carbs fat").lean(),
     ]);
 
-    const totalVolume = workouts.reduce((sum, w) => sum + (w.totalVolume || 0), 0);
+    const totalVolume = totals[0]?.totalVolume ?? 0;
+    const totalWorkouts = totals[0]?.count ?? 0;
 
+    // Sorgu yeniden eskiye çalışır; grafik için eskiden yeniye çevrilir.
     const dateFormatter = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short" });
-    const historicalData = workouts.map((w) => ({
+    const historicalData = recentWorkouts.reverse().map((w) => ({
         date: dateFormatter.format(new Date(w.date)),
         volume: w.totalVolume || 0,
     }));
 
-    const latestWeight = user?.weightLogs?.length ? user.weightLogs[user.weightLogs.length - 1].weight : null;
+    const latestWeight = lastWeight?.weight ?? null;
 
     // ObjectId/Date içeren ham Mongo nesnesi yerine yalnızca gereken düz alanlar döndürülür
-    const lastNutrition = user?.nutritionLogs?.length ? user.nutritionLogs[user.nutritionLogs.length - 1] : null;
     const latestNutrition = lastNutrition
         ? {
               calories: lastNutrition.calories,
@@ -43,7 +55,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
 
     return {
         totalVolume,
-        totalWorkouts: workouts.length,
+        totalWorkouts,
         latestWeight,
         latestNutrition,
         historicalData,

@@ -32,8 +32,8 @@ export default function NutritionPage() {
         setIsSubmitting(true);
 
         try {
-            const updatedLogs = await apiRequest<NutritionLogDTO[]>("/api/nutrition", { method: "POST", body: formData });
-            setLogs(updatedLogs);
+            const created = await apiRequest<NutritionLogDTO>("/api/nutrition", { method: "POST", body: formData });
+            setLogs((prev) => [...prev, created]);
             setFormData(EMPTY_FORM);
             toast.success("Beslenme kaydı eklendi.");
         } catch (err) {
@@ -47,8 +47,8 @@ export default function NutritionPage() {
         if (!window.confirm("Bu beslenme kaydını silmek istediğinden emin misin?")) return;
 
         try {
-            const updatedLogs = await apiRequest<NutritionLogDTO[]>(`/api/nutrition?id=${id}`, { method: "DELETE" });
-            setLogs(updatedLogs);
+            await apiRequest<{ _id: string }>(`/api/nutrition?id=${id}`, { method: "DELETE" });
+            setLogs((prev) => prev.filter((log) => log._id !== id));
             toast.success("Kayıt silindi.");
         } catch (err) {
             toast.error(getErrorMessage(err, "Kayıt silinemedi."));

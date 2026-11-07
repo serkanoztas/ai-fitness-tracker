@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ApiError, withAuth } from "@/lib/api/handler";
-import { Exercise } from "@/models/Exercise";
+import { Exercise, EXERCISE_NAME_COLLATION } from "@/models/Exercise";
 import type { MuscleGroup } from "@/types";
 
 const INITIAL_EXERCISES: { name: string; muscleGroup: MuscleGroup }[] = [
@@ -48,6 +48,8 @@ export const POST = withAuth(async () => {
                 filter: { name: ex.name },
                 update: { $setOnInsert: ex },
                 upsert: true,
+                // Unique indeksle aynı collation: "bench press" varsa "Bench Press" tekrar eklenmeye çalışılmaz.
+                collation: EXERCISE_NAME_COLLATION,
             },
         }))
     );

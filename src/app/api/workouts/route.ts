@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { Workout } from "@/models/Workout";
-import { Exercise } from "@/models/Exercise";
+import { Exercise, EXERCISE_NAME_COLLATION } from "@/models/Exercise";
 import { ApiError, parseBody, validate, withAuth } from "@/lib/api/handler";
 import { createWorkoutSchema, idParamSchema, updateWorkoutSchema } from "@/lib/validation/schemas";
+import { parseLimit } from "@/lib/api/query";
 
-// Büyük/küçük harf duyarsız eşleşme (regex yerine collation: kullanıcı girdisi sorgu desenine karışmaz)
-const CASE_INSENSITIVE = { locale: "en", strength: 2 } as const;
+const WORKOUT_LIST_DEFAULT_LIMIT = 200;
+const WORKOUT_LIST_MAX_LIMIT = 500;
 
 /** İsme göre egzersiz id'sini döndürür; yoksa "Other" kas grubuyla oluşturur. */
 async function resolveExerciseId(name: string) {
-    const find = () => Exercise.findOne({ name }).collation(CASE_INSENSITIVE).select("_id").lean();
+    // Büyük/küçük harf duyarsız eşleşme (regex yerine collation: kullanıcı girdisi sorgu desenine karışmaz)
+    const find = () => Exercise.findOne({ name }).collation(EXERCISE_NAME_COLLATION).select("_id").lean();
 
     const existing = await find();
     if (existing) return existing._id;
@@ -53,11 +55,14 @@ export const POST = withAuth(async ({ req, userId }) => {
     return NextResponse.json(newWorkout, { status: 201 });
 }, "Antrenman POST");
 
-export const GET = withAuth(async ({ userId }) => {
+export const GET = withAuth(async ({ req, userId }) => {
+    const limit = parseLimit(req, WORKOUT_LIST_DEFAULT_LIMIT, WORKOUT_LIST_MAX_LIMIT);
+
     // Egzersiz isimlerini referanstan (ID) çekiyoruz ve en yeniden eskiye sıralıyoruz
     const workouts = await Workout.find({ user: userId })
         .populate("exercises.exercise")
         .sort({ date: -1 })
+        .limit(limit)
         .lean();
 
     return NextResponse.json(workouts, { status: 200 });

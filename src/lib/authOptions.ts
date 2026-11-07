@@ -19,7 +19,8 @@ export const authOptions: NextAuthOptions = {
 
                 await connectToDatabase();
 
-                const user = await User.findOne({ email: credentials.email });
+                // password şemada select:false olduğu için burada açıkça isteniyor; e-posta kayıttaki gibi normalize edilir.
+                const user = await User.findOne({ email: credentials.email.trim().toLowerCase() }).select("+password");
                 if (!user) {
                     throw new Error("Bu email ile kayıtlı kullanıcı bulunamadı.");
                 }

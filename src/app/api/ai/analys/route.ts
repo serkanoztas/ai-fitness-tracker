@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Workout } from "@/models/Workout";
-import { User } from "@/models/User";
+import { WeightLog } from "@/models/WeightLog";
+import { NutritionLog } from "@/models/NutritionLog";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { FITNESS_COACH_SYSTEM_PROMPT, buildWorkoutAnalysisPrompt, AITrainingContext } from "@/lib/ai/prompt";
 import { ApiError, withAuth } from "@/lib/api/handler";
@@ -24,9 +25,11 @@ export const GET = withAuth(async ({ userId }) => {
     }
 
     // 1. Kullanıcı Verilerini (Kilo ve Beslenme) Çek
-    const user = await User.findById(userId).select("weightLogs nutritionLogs").lean();
-    const currentWeight = user?.weightLogs?.length ? user.weightLogs[user.weightLogs.length - 1].weight : null;
-    const latestNutrition = user?.nutritionLogs?.length ? user.nutritionLogs[user.nutritionLogs.length - 1] : null;
+    const [lastWeight, latestNutrition] = await Promise.all([
+        WeightLog.findOne({ user: userId }).sort({ date: -1 }).select("weight").lean(),
+        NutritionLog.findOne({ user: userId }).sort({ date: -1 }).lean(),
+    ]);
+    const currentWeight = lastWeight?.weight ?? null;
 
     // 2. En son antrenmanı bul
     const latestWorkoutList = await Workout.find({ user: userId })

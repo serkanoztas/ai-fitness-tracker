@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
-import { User } from "@/models/User";
-import { ApiError, parseBody, withAuth } from "@/lib/api/handler";
+import { WeightLog } from "@/models/WeightLog";
+import { parseBody, withAuth } from "@/lib/api/handler";
+import { parseLimit } from "@/lib/api/query";
 import { createWeightLogSchema } from "@/lib/validation/schemas";
 
-export const GET = withAuth(async ({ userId }) => {
-    const user = await User.findById(userId).select("weightLogs").lean();
-    return NextResponse.json(user?.weightLogs ?? [], { status: 200 });
+const DEFAULT_LIMIT = 365;
+const MAX_LIMIT = 2000;
+
+// Son N kaydı eskiden yeniye sıralı döndürür (grafik için hazır).
+export const GET = withAuth(async ({ req, userId }) => {
+    const limit = parseLimit(req, DEFAULT_LIMIT, MAX_LIMIT);
+
+    const latest = await WeightLog.find({ user: userId }).sort({ date: -1 }).limit(limit).lean();
+
+    return NextResponse.json(latest.reverse(), { status: 200 });
 }, "Kilo GET");
 
+// Yalnızca oluşturulan kaydı döndürür; istemci kendi listesine ekler.
 export const POST = withAuth(async ({ req, userId }) => {
     const { weight } = await parseBody(req, createWeightLogSchema);
 
-    const updatedUser = await User.findByIdAndUpdate(
-        userId,
-        { $push: { weightLogs: { weight, date: new Date() } } },
-        { new: true }
-    );
-    if (!updatedUser) {
-        throw new ApiError(404, "Kullanıcı bulunamadı");
-    }
+    const created = await WeightLog.create({ user: userId, weight });
 
-    return NextResponse.json(updatedUser.weightLogs, { status: 201 });
+    return NextResponse.json(created, { status: 201 });
 }, "Kilo POST");

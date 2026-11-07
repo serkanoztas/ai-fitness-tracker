@@ -27,8 +27,8 @@ export default function WeightPage() {
         setIsSubmitting(true);
 
         try {
-            const updatedLogs = await apiRequest<WeightLogDTO[]>("/api/weight", { method: "POST", body: { weight: newWeight } });
-            setWeightLogs(updatedLogs);
+            const created = await apiRequest<WeightLogDTO>("/api/weight", { method: "POST", body: { weight: newWeight } });
+            setWeightLogs((prev) => [...prev, created]);
             setNewWeight("");
             toast.success("Kilo kaydedildi.");
         } catch (err) {

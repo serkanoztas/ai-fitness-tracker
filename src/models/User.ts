@@ -1,28 +1,14 @@
-import mongoose, { Schema, Model } from "mongoose";
-import { IUser } from "../types/index";
+import mongoose, { Model } from "mongoose";
+import { IUser } from "@/types";
 
 const UserSchema = new mongoose.Schema<IUser>(
     {
-        name: { type: String, required: true },
-        email: { type: String, required: true, unique: true },
-        password: { type: String, required: true },
+        name: { type: String, required: true, trim: true },
+        // E-posta küçük harfe çevrilip kırpılır: "A@x.com" ile "a@x.com" aynı hesap sayılır.
+        email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+        // Varsayılan olarak sorgulara dahil edilmez; giriş akışında .select("+password") ile istenir.
+        password: { type: String, required: true, select: false },
         image: { type: String, default: null },
-        weightLogs: [
-            {
-                weight: { type: Number, required: true },
-                date: { type: Date, default: Date.now },
-            },
-        ],
-
-        nutritionLogs: [
-            {
-                calories: { type: Number, required: true },
-                protein: { type: Number, default: 0 },
-                carbs: { type: Number, default: 0 },
-                fat: { type: Number, default: 0 },
-                date: { type: Date, default: Date.now },
-            },
-        ],
 
         dailyGoals: {
             calories: { type: Number, default: null },
@@ -35,4 +21,3 @@ const UserSchema = new mongoose.Schema<IUser>(
 );
 
 export const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
-

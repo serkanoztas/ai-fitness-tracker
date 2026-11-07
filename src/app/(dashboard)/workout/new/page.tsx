@@ -3,8 +3,9 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Save, Dumbbell, BookmarkPlus, LibraryBig, Loader2 } from "lucide-react";
+import { WORKOUT_SPLITS } from "@/lib/constants";
 
-const SPLIT_TYPES = ["Upper", "Lower", "Push", "Pull", "Legs", "FullBody", "Other", "Arms"];
+const SPLIT_TYPES: readonly string[] = WORKOUT_SPLITS;
 const DRAFT_KEY = "workoutDraft";
 const DRAFT_DEBOUNCE_MS = 400;
 

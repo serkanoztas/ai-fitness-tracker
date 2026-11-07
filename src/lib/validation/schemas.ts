@@ -1,8 +1,7 @@
 import { z } from "zod";
+import { WORKOUT_SPLITS } from "@/lib/constants";
 
 // --- Ortak yapı taşları ---
-
-export const SPLIT_TYPES = ["Upper", "Lower", "Push", "Pull", "Legs", "FullBody", "Other", "Arms"] as const;
 
 /** Formlardan string olarak gelebilen sayılar için: "12" -> 12, "" -> 0 */
 const num = (label: string, min: number, max: number) =>
@@ -12,7 +11,7 @@ const num = (label: string, min: number, max: number) =>
         .max(max, `${label} en fazla ${max} olabilir.`);
 
 const objectId = z.string({ error: "Geçersiz id." }).regex(/^[a-f\d]{24}$/i, "Geçersiz id.");
-const splitType = z.enum(SPLIT_TYPES, { error: "Geçersiz antrenman tipi." });
+const splitType = z.enum(WORKOUT_SPLITS,{ error: "Geçersiz antrenman tipi." });
 const exerciseName = z
     .string({ error: "Egzersiz adı gereklidir." })
     .trim()
@@ -101,7 +100,7 @@ export const updateProfileSchema = z.object({
 
 export const registerSchema = z.object({
     name: z.string({ error: "İsim gereklidir." }).trim().min(1, "İsim gereklidir.").max(60, "İsim en fazla 60 karakter olabilir."),
-    email: z.string({ error: "E-posta gereklidir." }).trim().max(254).pipe(z.email("Geçerli bir e-posta giriniz.")),
+    email: z.string({ error: "E-posta gereklidir." }).trim().toLowerCase().max(254).pipe(z.email("Geçerli bir e-posta giriniz.")),
     // bcrypt yalnızca ilk 72 byte'ı kullanır; daha uzun parolalar sessizce kırpılmasın.
     password: z.string({ error: "Şifre gereklidir." }).min(8, "Şifre en az 8 karakter olmalıdır.").max(72, "Şifre en fazla 72 karakter olabilir."),
 });

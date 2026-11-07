@@ -1,14 +1,8 @@
-import { Document, Types } from "mongoose";
-import mongoose from "mongoose";
+import type { Document, Types } from "mongoose";
+import type { MUSCLE_GROUPS, WORKOUT_SPLITS } from "@/lib/constants";
 
-export type MuscleGroup = "Chest" | "Back" | "Shoulders" | "Legs" | "Arms" | "Core" | "Other";
-export type WorkoutSplit = "Upper" | "Lower" | "Push" | "Pull" | "Legs" | "FullBody" | "Arms" | "Other";
-
-// Kullanıcı Kilo Logu
-export interface IWeightLog {
-    date: Date;
-    weight: number;
-}
+export type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
+export type WorkoutSplit = (typeof WORKOUT_SPLITS)[number];
 
 // Set Detayları
 export interface ISet {
@@ -26,19 +20,12 @@ export interface IExercise extends Document {
 }
 
 // Kullanıcı Modeli
+// Not: kilo ve beslenme kayıtları artık User içinde gömülü değil; ayrı koleksiyonlarda (WeightLog, NutritionLog).
 export interface IUser extends Document {
     name: string;
     email: string;
     password?: string;
-    image?: string;
-    weightLogs: IWeightLog[];
-    nutritionLogs: {
-        calories: number;
-        protein: number;
-        carbs: number;
-        fat: number;
-        date: Date;
-    }[];
+    image?: string | null;
     dailyGoals: {
         calories: number | null;
         protein: number | null;
@@ -47,6 +34,23 @@ export interface IUser extends Document {
     };
     createdAt: Date;
     updatedAt: Date;
+}
+
+// Kullanıcı Kilo Kaydı (ayrı koleksiyon)
+export interface IWeightLog extends Document {
+    user: Types.ObjectId;
+    weight: number;
+    date: Date;
+}
+
+// Kullanıcı Beslenme Kaydı (ayrı koleksiyon)
+export interface INutritionLog extends Document {
+    user: Types.ObjectId;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    date: Date;
 }
 
 // Antrenman İçindeki Tekil Egzersiz Kaydı
@@ -70,7 +74,7 @@ export interface IWorkout extends Document {
 export interface IRoutine extends Document {
     user: Types.ObjectId | IUser; // IWorkout'taki gibi referans esnekliği sağlar
     routineName: string;
-    splitType: WorkoutSplit; // kendi belitlediğimiz tipi kullanıyoruz
+    splitType: WorkoutSplit;
     exercises: {
         exerciseName: string;
         sets: number;

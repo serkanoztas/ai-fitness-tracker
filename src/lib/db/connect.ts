@@ -34,6 +34,8 @@ export async function connectToDatabase() {
     if (!cached.promise) {
         const opts = {
             bufferCommands: false, // Bekleyen işlemleri kapat, hızlı hata fırlatsın
+            maxPoolSize: 10, // Serverless'ta her instance'ın havuzu küçük tutulur
+            serverSelectionTimeoutMS: 5000, // DB erişilemezse 30 sn beklemek yerine hızlı hata ver
         };
 
         cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
